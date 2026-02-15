@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AgriCureSystemAPI.Areas.Identity
+namespace AgriCureSystemAPI.Areas.Identity.Controllers
 {
     [Route("api/[area]/[controller]")]
     [Area("Identity")]
@@ -43,8 +43,6 @@ namespace AgriCureSystemAPI.Areas.Identity
 
             return Ok(userVM);
         }
-
-
         [HttpPut("UpdateProfile")]
         public async Task<IActionResult> UpdateProfile(ApplicationUserRequest applicationUserRequest)
         {
@@ -66,7 +64,6 @@ namespace AgriCureSystemAPI.Areas.Identity
                 msg ="Update profile "
             });
         }
-
         [HttpPut("ChangePassword")]
         public async Task<IActionResult> ChangePassword(ApplicationUserRequest applicationUserRequest)
         {

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 
 
-namespace AgriCureSystemAPI.Areas.Identity
+namespace AgriCureSystemAPI.Areas.Identity.Controllers
 {
     [Route("api/[area]/[controller]")]
     [Area("Identity")]
