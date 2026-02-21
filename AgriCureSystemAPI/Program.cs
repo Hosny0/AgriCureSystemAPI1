@@ -4,12 +4,15 @@ using AgriCureSystemAPI.Repositories;
 using AgriCureSystemAPI.Repositories.IRepositories;
 using AgriCureSystemAPI.Utility;
 using AgriCureSystemAPI.Utility.DBInitializer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Scalar;
 using Scalar.AspNetCore;
 using Stripe;
+using System.Text;
 
 namespace AgriCureSystemAPI
 {
@@ -41,6 +44,26 @@ namespace AgriCureSystemAPI
              .AddEntityFrameworkStores<ApplicationDbContext>()
               .AddDefaultTokenProviders();
 
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(config => {
+                config.RequireHttpsMetadata = false;
+                config.SaveToken = true;
+                config.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidIssuer = "https://localhost:7177",
+                    ValidAudience = "https://localhost:7112,https://localhost:4200",
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf")),
+                    ValidateLifetime = true
+                };
+            });
+            builder.Services.AddAuthorization();
+           
             //  builder.Services.ConfigureApplicationCookie(options =>
             // {
             //    options.LoginPath = "/Identity/Account/Login";
@@ -70,6 +93,8 @@ namespace AgriCureSystemAPI
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles();
+            app.UseAuthentication();
 
             app.UseAuthorization();
 

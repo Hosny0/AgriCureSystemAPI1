@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 
 namespace AgriCureSystemAPI.Areas.Identity.Controllers
@@ -55,6 +59,7 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
                 await _emailSender.SendEmailAsync(registerRequest.Email, "Confirm Your Account", $"<h1>Confirm Your Account By Clicking <a href='{link}'>Here</a></h1>");
 
                 await _userManager.AddToRoleAsync(applicationUser, SD.Customer);
+
 
 
             }
@@ -115,6 +120,30 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
                         return BadRequest($"You have a block till {user.LockoutEnd}");
                     }
 
+                    var userRoles = await _userManager.GetRolesAsync(user);
+
+                    var claims = new List<Claim> {
+                        new Claim(ClaimTypes.NameIdentifier, user.Id),
+                        new Claim(ClaimTypes.Email, user.Email),
+                        new Claim(ClaimTypes.Name, user.UserName),
+                        new Claim(ClaimTypes.Role, String.Join(",", userRoles)),
+                    };
+
+                    var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes("HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf")), SecurityAlgorithms.HmacSha256);
+
+                    var token = new JwtSecurityToken(
+                        issuer: "https://localhost:7177",
+                        audience: "https://localhost:7112,,https://localhost:4200",
+                        claims: claims,
+                        expires: DateTime.UtcNow.AddDays(1),
+                        signingCredentials: signingCredentials
+                    ); 
+
+                    return Ok(new
+                    {
+                        token = new JwtSecurityTokenHandler().WriteToken(token),
+                        expires = token.ValidTo
+                    });
                 }
 
 

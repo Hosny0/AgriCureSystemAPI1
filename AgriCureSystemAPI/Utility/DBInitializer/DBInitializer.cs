@@ -31,7 +31,7 @@ namespace AgriCureSystemAPI.Utility.DBInitializer
                     _context.Database.Migrate();
                 }
 
-                if (_roleManager.Roles.IsNullOrEmpty())
+                if (_roleManager.Roles is null)
                 {
                     _roleManager.CreateAsync(new(SD.SuperAdmin)).GetAwaiter().GetResult();
                     _roleManager.CreateAsync(new(SD.Admin)).GetAwaiter().GetResult();
