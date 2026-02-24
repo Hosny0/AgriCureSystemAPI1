@@ -2,16 +2,20 @@ using AgriCureSystemAPI.Data;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Repositories;
 using AgriCureSystemAPI.Repositories.IRepositories;
+using AgriCureSystemAPI.Services;
 using AgriCureSystemAPI.Utility;
 using AgriCureSystemAPI.Utility.DBInitializer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Scalar;
 using Scalar.AspNetCore;
 using Stripe;
+using System.Globalization;
 using System.Text;
 
 namespace AgriCureSystemAPI
@@ -80,10 +84,17 @@ namespace AgriCureSystemAPI
             builder.Services.AddScoped<ICartRepository, CartRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
+            builder.Services.AddTransient<ITokenServices, Services.TokenServices>();
+
+
             builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
             StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
+
+
+          
             var app = builder.Build();
+
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
@@ -94,9 +105,11 @@ namespace AgriCureSystemAPI
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-            app.UseAuthentication();
 
+
+            app.UseAuthentication();
             app.UseAuthorization();
+
 
 
             app.MapControllers();

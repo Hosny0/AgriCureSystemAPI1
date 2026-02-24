@@ -5,6 +5,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace AgriCureSystemAPI.Areas.Admin.Controllers
 {
@@ -15,7 +16,7 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
     {
         private ICategoryRepository _categoryRepository;
 
-        public CategoriesController(ICategoryRepository categoryRepository)
+        public CategoriesController(ICategoryRepository categoryRepository )
         {
             _categoryRepository = categoryRepository;
         }

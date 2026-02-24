@@ -1,16 +1,21 @@
 ﻿using AgriCureSystemAPI.DTOs.Request;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Repositories.IRepositories;
+using AgriCureSystemAPI.Services;
 using AgriCureSystemAPI.Utility;
+using Azure.Core;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
 
 
 namespace AgriCureSystemAPI.Areas.Identity.Controllers
@@ -24,14 +29,16 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
         private readonly IEmailSender _emailSender;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IUserOTPRepository _userOTPRepository;
+        private readonly ITokenServices _tokenServices;
         private ApplicationUser applicationUser;
 
-        public AccountController(UserManager<ApplicationUser> userManager, IEmailSender emailSender, SignInManager<ApplicationUser> signInManager, IUserOTPRepository userOTPRepository)
+        public AccountController(UserManager<ApplicationUser> userManager, IEmailSender emailSender, SignInManager<ApplicationUser> signInManager, IUserOTPRepository userOTPRepository  , ITokenServices tokenServices)
         {
             _userManager = userManager;
             _emailSender = emailSender;
             _signInManager = signInManager;
             _userOTPRepository = userOTPRepository;
+            _tokenServices = tokenServices;
         }
         [HttpPost("Register")]
         public async Task<IActionResult> Register(RegisterRequest registerRequest)
@@ -102,6 +109,7 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
             {
                 var result = await _signInManager.PasswordSignInAsync(user.UserName, loginRequest.Password, loginRequest.RememberMe, lockoutOnFailure: true);
 
+                
 
                 if (result.IsLockedOut)
                 {
@@ -120,33 +128,35 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
                         return BadRequest($"You have a block till {user.LockoutEnd}");
                     }
 
-                    var userRoles = await _userManager.GetRolesAsync(user);
-
-                    var claims = new List<Claim> {
-                        new Claim(ClaimTypes.NameIdentifier, user.Id),
-                        new Claim(ClaimTypes.Email, user.Email),
-                        new Claim(ClaimTypes.Name, user.UserName),
-                        new Claim(ClaimTypes.Role, String.Join(",", userRoles)),
-                    };
-
-                    var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes("HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf")), SecurityAlgorithms.HmacSha256);
-
-                    var token = new JwtSecurityToken(
-                        issuer: "https://localhost:7177",
-                        audience: "https://localhost:7112,,https://localhost:4200",
-                        claims: claims,
-                        expires: DateTime.UtcNow.AddDays(1),
-                        signingCredentials: signingCredentials
-                    ); 
-
-                    return Ok(new
-                    {
-                        token = new JwtSecurityTokenHandler().WriteToken(token),
-                        expires = token.ValidTo
-                    });
+                   
                 }
 
+                var userRoles = await _userManager.GetRolesAsync(user);
 
+                var claims = new[]
+                 {
+                        new Claim(ClaimTypes.Name, user.UserName!),
+                        new Claim(ClaimTypes.Email, user.Email!),
+                        new Claim(ClaimTypes.NameIdentifier, user.Id),
+                        new Claim(ClaimTypes.Role, String.Join(", ", userRoles)),
+                        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    };
+
+                var accesstoken = _tokenServices.GenerateAccessToken(claims);
+                var refreshToken = _tokenServices.GenerateRefreshToken();
+
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+                 await _userManager.UpdateAsync(user);
+
+                return Ok(new
+                {
+                    AccessToken = accesstoken,
+                    RefreshToken = refreshToken,
+                    ValidTo = "30 min",
+                    RefreshTokenExpiration = "7 days"
+                });
             }
             return BadRequest("Invalid User Name Or Password");
 
@@ -242,6 +252,49 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
 
             return NotFound();
         }
+        [HttpPost]
+        [Route("refresh")]
+        public async Task<IActionResult> Refresh(TokenApiRequest tokenApiRequest)
+        {
+            if (tokenApiRequest is null || tokenApiRequest.AccessToken is null || tokenApiRequest.RefreshToken is null)
+                return BadRequest("Invalid client request");
 
+
+            string accessToken = tokenApiRequest.AccessToken;
+            string refreshToken = tokenApiRequest.RefreshToken;
+
+            var principal = _tokenServices.GetPrincipalFromExpiredToken(accessToken);
+            var userName = principal.Identity.Name;
+
+            var user =_userManager.Users.FirstOrDefault(u => u.UserName == userName);
+            if (user is null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
+                return BadRequest("Invalid client request");
+
+            var newAccessToken = _tokenServices.GenerateAccessToken(principal.Claims);
+            var newRefreshToken = _tokenServices.GenerateRefreshToken();
+
+            user.RefreshToken = newRefreshToken;
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken,
+                ValidTo = "30 min",
+            });
+
+
+        }
+        [HttpPost, Authorize]
+        [Route("revoke")]
+        public async Task<IActionResult> Revoke()
+        {
+            var username = User.Identity.Name;
+            var user = _userManager.Users.FirstOrDefault(u => u.UserName == username);
+            if (user == null) return BadRequest();
+            user.RefreshToken = null;
+            await _userManager.UpdateAsync(user);
+            return NoContent();
+        }
     }
 }
