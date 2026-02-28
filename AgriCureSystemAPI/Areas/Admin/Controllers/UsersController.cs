@@ -2,6 +2,7 @@
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Utility;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,8 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
     [Route("api[area]/[controller]")]
     [ApiController]
     [Area("Admin")]
+    [Authorize(Roles = $"{SD.SuperAdmin},{SD.Admin}")]
+
     public class UsersController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;

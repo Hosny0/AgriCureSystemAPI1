@@ -1,7 +1,9 @@
 ﻿using AgriCureSystemAPI.DTOs.Requests;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Repositories.IRepositories;
+using AgriCureSystemAPI.Utility;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,6 +12,8 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
     [Route("api[area]/[controller]")]
     [ApiController]
     [Area("Admin")]
+    [Authorize(Roles = $"{SD.SuperAdmin},{SD.Admin}")]
+
     public class ProductsController : ControllerBase
     {
         private readonly IProductRepository _productRepository;

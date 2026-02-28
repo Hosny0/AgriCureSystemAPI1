@@ -24,6 +24,9 @@ namespace AgriCureSystemAPI
     {
         public static void Main(string[] args)
         {
+
+            var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
@@ -31,6 +34,16 @@ namespace AgriCureSystemAPI
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
+
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy(name: MyAllowSpecificOrigins,
+                                  policy =>
+                                  {
+                                      policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                                  });
+            });
 
             builder.Services.AddDbContext<ApplicationDbContext>(
                            option => option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -60,19 +73,19 @@ namespace AgriCureSystemAPI
                     ValidateIssuerSigningKey = true,
                     ValidateIssuer = true,
                     ValidateAudience = true,
-                    ValidIssuer = "https://localhost:7177",
-                    ValidAudience = "https://localhost:7112,https://localhost:4200",
+                    ValidIssuer = "https://localhost:7112",
+                    ValidAudiences = new[] { "https://localhost:7112", "https://localhost:4200" },
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf")),
                     ValidateLifetime = true
                 };
             });
             builder.Services.AddAuthorization();
-           
-            //  builder.Services.ConfigureApplicationCookie(options =>
-            // {
-            //    options.LoginPath = "/Identity/Account/Login";
-            //  options.AccessDeniedPath = "/Identity/Account/AccessDenied";
-            //});
+
+              builder.Services.ConfigureApplicationCookie(options =>
+             {
+                options.LoginPath = "/Identity/Account/Login";
+              options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+            });
 
             builder.Services.AddTransient<IEmailSender, EmailSender>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
@@ -92,20 +105,28 @@ namespace AgriCureSystemAPI
 
 
 
-          
+
             var app = builder.Build();
 
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
             {
                 app.MapOpenApi();
                 app.MapScalarApiReference();
             }
 
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbInitializer = scope.ServiceProvider.GetRequiredService<IDBInitializer>();
+               dbInitializer.Initialize();
+            }
+
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 
+            app.UseCors(MyAllowSpecificOrigins);
 
             app.UseAuthentication();
             app.UseAuthorization();

@@ -1,7 +1,9 @@
 ﻿using AgriCureSystemAPI.Data;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Repositories.IRepositories;
+using AgriCureSystemAPI.Utility;
 using ECommerce.API.DTOs.Requests;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +12,8 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
     [Route("api/[area]/[controller]")]
     [ApiController]
     [Area("Customer")]
+    [Authorize(Roles = $"{SD.SuperAdmin},{SD.Admin},{SD.Customer},{SD.Employee}")]
+
     public class HomeDataController : ControllerBase
     {
         private readonly IProductRepository _productRepository;

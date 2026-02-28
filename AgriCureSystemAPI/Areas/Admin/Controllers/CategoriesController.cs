@@ -1,6 +1,7 @@
 ﻿using AgriCureSystemAPI.DTOs.Requests;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Repositories.IRepositories;
+using AgriCureSystemAPI.Utility;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -12,6 +13,9 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
     [Route("api/[area]/[controller]")]
     [Area("Admin")]
     [ApiController]
+
+    [Authorize(Roles = $"{SD.SuperAdmin},{SD.Admin}")]
+
     public class CategoriesController : ControllerBase
     {
         private ICategoryRepository _categoryRepository;

@@ -12,12 +12,12 @@ namespace AgriCureSystemAPI.Services
         public string GenerateAccessToken(IEnumerable<Claim> claims)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-                         "4BB86D85AE74ABD1D96DB199A2D894BB86D85AE74ABD1D96DB199A2D89"));
+                         "HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf**HosnyAshraf"));
             var signingCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var tokeOptions = new JwtSecurityToken(
                 issuer: "https://localhost:7112",
-                audience: "https://localhost:7112,https://localhost:4200",
+                audience: "https://localhost:7112",//حط الdomain بتاع الangular هنا
                 claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(30),
                 signingCredentials: signingCredentials

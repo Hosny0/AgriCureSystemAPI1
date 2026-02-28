@@ -26,18 +26,25 @@ namespace AgriCureSystemAPI.Utility.DBInitializer
         {
             try
             {
-                if(_context.Database.GetPendingMigrations().Any())
+                if (_context.Database.GetPendingMigrations().Any())
                 {
                     _context.Database.Migrate();
                 }
 
-                if (_roleManager.Roles is null)
+                // 1. نتأكد من الـ Roles لوحدها
+                if (!_roleManager.Roles.Any())
                 {
                     _roleManager.CreateAsync(new(SD.SuperAdmin)).GetAwaiter().GetResult();
                     _roleManager.CreateAsync(new(SD.Admin)).GetAwaiter().GetResult();
                     _roleManager.CreateAsync(new(SD.Employee)).GetAwaiter().GetResult();
                     _roleManager.CreateAsync(new(SD.Customer)).GetAwaiter().GetResult();
+                }
 
+                // 2. نتأكد من اليوزر لوحده (عشان لو الـ Roles كانت موجودة بس اليوزر لأ)
+                var user = _userManager.FindByNameAsync("SuperAdmin").GetAwaiter().GetResult();
+
+                if (user == null)
+                {
                     _userManager.CreateAsync(new()
                     {
                         UserName = "SuperAdmin",
@@ -47,13 +54,14 @@ namespace AgriCureSystemAPI.Utility.DBInitializer
                         EmailConfirmed = true
                     }, "Admin123$").GetAwaiter().GetResult();
 
-                    var user = _userManager.FindByNameAsync("SuperAdmin").GetAwaiter().GetResult();
+                    // نجيب اليوزر بعد ما ضفناه عشان نديله الرول
+                    var createdUser = _userManager.FindByNameAsync("SuperAdmin").GetAwaiter().GetResult();
+                    _userManager.AddToRoleAsync(createdUser, SD.SuperAdmin).GetAwaiter().GetResult();
 
-                    _userManager.AddToRoleAsync(user, SD.SuperAdmin).GetAwaiter().GetResult();
+                    Console.WriteLine("SuperAdmin Created Successfully!");
                 }
-                //
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError($"Error: {ex.Message}");
                 Console.WriteLine($"Error: {ex.Message}");
