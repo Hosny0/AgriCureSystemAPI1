@@ -19,8 +19,10 @@ namespace AgriCureSystemAPI.Models
         public decimal Price { get; set; }
         [Range(0, 50_000)]
         public int Quantity { get; set; }
-        [Range(0, 5)]
-        public double Rate { get; set; }
+        public ICollection<Review> Reviews { get; set; } = new List<Review>();
+
+        [NotMapped]
+        public double Rate => Reviews != null && Reviews.Any()? Math.Round(Reviews.Average(r => r.RatingValue), 1): 0;
         [Range(0, 100)]
         public double Discount { get; set; }
        

@@ -31,7 +31,7 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             IQueryable<Product> products = _context.Products;
 
             // Join
-            products = products.Include(e => e.Category);
+            products = products.Include(e => e.Category).Include(e => e.Reviews);
 
 
             var allCategories = _context.Categories
@@ -102,11 +102,11 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
         [HttpGet("Details/{id}")]
         public IActionResult GetOne([FromRoute] int id)
         {
-            var product = _context.Products.Include(e => e.Category).Include(e => e.Brand).FirstOrDefault(e => e.ProductId == id);
+            var product = _context.Products.Include(e => e.Category).Include(e => e.Brand).Include(e => e.Reviews).FirstOrDefault(e => e.ProductId == id);
 
             if (product is not null)
             {
-                var relatedProducts = _context.Products.Include(e => e.Category).Where(e => e.CategoryId == product.CategoryId && e.ProductId != product.ProductId).Take(4);
+                var relatedProducts = _context.Products.Include(e => e.Category).Include(e => e.Reviews).Where(e => e.CategoryId == product.CategoryId && e.ProductId != product.ProductId).Take(4);
 
             //    var topProduct = _context.Products.Include(e => e.Category).Where(e => e.ProductId != product.ProductId).OrderByDescending(e => e.Traffic).Take(4);
 

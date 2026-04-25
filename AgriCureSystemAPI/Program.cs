@@ -114,6 +114,7 @@ namespace AgriCureSystemAPI
             builder.Services.AddScoped<IDBInitializer, DBInitializer>();
             builder.Services.AddScoped<ICartRepository, CartRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
             builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
             builder.Services.AddTransient<ITokenServices, Services.TokenServices>();
 

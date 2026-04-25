@@ -21,6 +21,7 @@ namespace AgriCureSystemAPI.Data
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<DiseaseScan> DiseaseScan { get; set; }
+        public DbSet<Review> Reviews { get; set; }
 
 
         
