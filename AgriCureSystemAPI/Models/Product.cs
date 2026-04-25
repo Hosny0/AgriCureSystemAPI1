@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AgriCureSystemAPI.Models
 {
@@ -22,6 +23,9 @@ namespace AgriCureSystemAPI.Models
         public double Rate { get; set; }
         [Range(0, 100)]
         public double Discount { get; set; }
+       
+        [NotMapped]
+        public decimal PriceAfterDiscount => Price - (Price * (decimal)(Discount / 100.0));
         public int Traffic { get; set; }
         public int CategoryId { get; set; }
         [ValidateNever]
