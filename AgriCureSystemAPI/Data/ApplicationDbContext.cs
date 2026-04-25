@@ -31,7 +31,7 @@ namespace AgriCureSystemAPI.Data
         {
             base.OnConfiguring(optionsBuilder);
 
-            optionsBuilder.UseSqlServer("Data Source=.;Initial Catalog=AgriCureSystem;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;");
+            optionsBuilder.UseSqlServer("Server = db48330.public.databaseasp.net; Database=db48330; User Id = db48330; Password=Jp8+o3#HB?q9; Encrypt=True; TrustServerCertificate=True;");
         }
     }
 }

@@ -33,6 +33,12 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             // Join
             products = products.Include(e => e.Category);
 
+
+            var allCategories = _context.Categories
+                                .Select(c => new { Id = c.Id, Name = c.Name })
+                                .ToList();
+
+
             // Filter
             if (productFilterRequest.ProductName is not null)
             {
@@ -52,6 +58,10 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             if (productFilterRequest.CategoryId > 0)
             {
                 products = products.Where(e => e.CategoryId == productFilterRequest.CategoryId);
+            }
+            else if (!string.IsNullOrEmpty(productFilterRequest.CategoryName))
+            {
+                products = products.Where(e => e.Category.Name.Contains(productFilterRequest.CategoryName));
             }
 
             if (productFilterRequest.IsHot)
@@ -76,12 +86,14 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                 MinPrice = productFilterRequest.MinPrice,
                 MaxPrice = productFilterRequest.MaxPrice,
                 CategoryId = productFilterRequest.CategoryId,
+                CategoryName = productFilterRequest.CategoryName, 
                 IsHot = productFilterRequest.IsHot,
                 products = products.Skip((page - 1) * 8).Take(8).ToList()
             };
 
             return Ok(new
             {
+                CategoriesList = allCategories, 
                 pagination,
                 returned
             });
