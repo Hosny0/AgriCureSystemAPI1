@@ -1,3 +1,5 @@
+using AgriCureSystem.Repositories;
+using AgriCureSystem.Repositories.IRepositories;
 using AgriCureSystemAPI.Data;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Repositories;
@@ -83,9 +85,21 @@ namespace AgriCureSystemAPI
                     ValidateLifetime = true
                 };
             });
+
+
+
             builder.Services.AddAuthorization();
 
-              builder.Services.ConfigureApplicationCookie(options =>
+
+
+            builder.Services.AddHttpClient<AgriCureSystem.Services.PlantDiseaseApiService>(client =>
+            {
+                client.BaseAddress = new Uri(builder.Configuration["AiApiSettings:BaseUrl"]);
+            });
+
+
+
+            builder.Services.ConfigureApplicationCookie(options =>
              {
                 options.LoginPath = "/Identity/Account/Login";
               options.AccessDeniedPath = "/Identity/Account/AccessDenied";
@@ -93,7 +107,7 @@ namespace AgriCureSystemAPI
 
             builder.Services.AddTransient<IEmailSender, EmailSender>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
-
+            builder.Services.AddScoped<IDiseaseScanRepository, DiseaseScanRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
             builder.Services.AddScoped<IBrandRepository, BrandRepository>();
             builder.Services.AddScoped<IUserOTPRepository, UserOTPRepository>();
