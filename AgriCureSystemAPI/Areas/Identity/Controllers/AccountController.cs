@@ -225,14 +225,23 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
         [HttpPost("ResetPassword")]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest resetPasswordRequest)
         {
-            var userOTP = (await _userOTPRepository.GetAsync(e => e.ApplicationUserId == resetPasswordRequest.UserId)).OrderBy(e => e.Id).LastOrDefault();
+            // 1. الوصول للمستخدم عن طريق الـ UserName
+            var user = await _userManager.FindByNameAsync(resetPasswordRequest.UserName);
+
+            if (user is null)
+                return BadRequest("User not found");
+
+            // 2. البحث عن الـ OTP باستخدام الـ Id الداخلي للمستخدم
+            var userOTP = (await _userOTPRepository.GetAsync(e => e.ApplicationUserId == user.Id))
+                          .OrderBy(e => e.Id)
+                          .LastOrDefault();
 
             if (userOTP is not null)
             {
                 if (DateTime.UtcNow < userOTP.ExpirationDate && !userOTP.Status && userOTP.Code == resetPasswordRequest.Code)
                 {
-                    // تم تعديل الكلمة من Accounts لـ Account
-                    return CreatedAtAction(nameof(ChangePassword), "Account", new { area = "Identity", userId = userOTP.ApplicationUserId! }, string.Empty);
+                    // نمرر الـ UserName للـ Action القادم
+                    return CreatedAtAction(nameof(ChangePassword), "Account", new { area = "Identity", userName = user.UserName }, string.Empty);
                 }
             }
 
@@ -242,19 +251,25 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
         [HttpPost("ChangePassword")]
         public async Task<IActionResult> ChangePassword(ChangePasswordRequest changePasswordRequest)
         {
-            var user = await _userManager.FindByIdAsync(changePasswordRequest.UserId);
+            // البحث بالـ UserName بدل الـ Id
+            var user = await _userManager.FindByNameAsync(changePasswordRequest.UserName);
 
             if (user is not null)
             {
+                // توليد الـ Token وإعادة تعيين الكلمة
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                await _userManager.ResetPasswordAsync(user, token, changePasswordRequest.Password);
+                var result = await _userManager.ResetPasswordAsync(user, token, changePasswordRequest.Password);
 
-                return Ok("Reset Password Successfully");
+                if (result.Succeeded)
+                {
+                    return Ok("Reset Password Successfully");
+                }
+
+                return BadRequest(result.Errors);
             }
 
-            return NotFound();
+            return NotFound("User not found");
         }
-
         [HttpPost]
         [Route("refresh")]
         public async Task<IActionResult> Refresh(TokenApiRequest tokenApiRequest)

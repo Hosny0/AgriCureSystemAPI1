@@ -47,43 +47,59 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
         public async Task<IActionResult> UpdateProfile(ApplicationUserRequest applicationUserRequest)
         {
             var user = await _userManager.GetUserAsync(User);
+            if (user is null) return NotFound();
 
-            if (user is null)
-                return NotFound();
-
-            user.FirstName = applicationUserRequest.Name;
-            user.UserName = applicationUserRequest.UserName;
-            user.Email = applicationUserRequest.Email;
+            // 1. تحديث البيانات العادية
+            user.FirstName = applicationUserRequest.FirstName;
+            user.LastName = applicationUserRequest.LastName;
             user.PhoneNumber = applicationUserRequest.PhoneNumber;
             user.Address = applicationUserRequest.Address;
 
-            await _userManager.UpdateAsync(user);
-
-            return Ok(new
+            // 2. التحديث الصح للاسم (عشان NormalizedUserName يتحدث واللوجين يشتغل)
+            if (applicationUserRequest.UserName != user.UserName)
             {
-                msg ="Update profile "
-            });
-        }
-        [HttpPut("ChangePassword")]
-        public async Task<IActionResult> ChangePassword(ApplicationUserRequest applicationUserRequest)
-        {
-            var user = await _userManager.GetUserAsync(User);
-
-            if (user is null)
-                return NotFound();
-
-            var result = await _userManager.ChangePasswordAsync(user, applicationUserRequest.OldPassword, applicationUserRequest.NewPassword);
-
-            if (!result.Succeeded)
-            {
-                return BadRequest(result.Errors);
+                var result = await _userManager.SetUserNameAsync(user, applicationUserRequest.UserName);
+                if (!result.Succeeded) return BadRequest(result.Errors);
             }
 
-            return Ok(new
+            // 3. التحديث الصح للإيميل
+            if (applicationUserRequest.Email != user.Email)
             {
-                msg = "Update profile "
-            });
+                var result = await _userManager.SetEmailAsync(user, applicationUserRequest.Email);
+                if (!result.Succeeded) return BadRequest(result.Errors);
+                user.EmailConfirmed = true; // تفعيل فوري عشان الـ Login ميرفضش
+            }
+
+            // 4. حفظ التغييرات وتحديث بصمة الأمان
+            await _userManager.UpdateAsync(user);
+            await _userManager.UpdateSecurityStampAsync(user); // مهمة جداً عشان التوكنز القديمة تبطل والجديدة تشتغل
+
+            return Ok(new { msg = "Profile updated successfully" });
+
         }
+
     }
+    
+      //  [HttpPut("ChangePassword")]
+      //  public async Task<IActionResult> ChangePassword(ApplicationUserRequest applicationUserRequest)
+      //  {
+      //      var user = await _userManager.GetUserAsync(User);
+      //
+      //      if (user is null)
+      //          return NotFound();
+      //
+      //      var result = await _userManager.ChangePasswordAsync(user, applicationUserRequest.OldPassword, applicationUserRequest.NewPassword);
+      //
+      //      if (!result.Succeeded)
+      //      {
+      //          return BadRequest(result.Errors);
+      //      }
+      //
+      //      return Ok(new
+      //      {
+      //          msg = "Update profile "
+      //      });
+      //  }
+    
 }
 

@@ -13,6 +13,6 @@ namespace AgriCureSystemAPI.DTOs.Request
         [Compare(nameof(Password))]
         public string ConfirmPassword { get; set; } = string.Empty;
 
-        public string UserId { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
     }
 }

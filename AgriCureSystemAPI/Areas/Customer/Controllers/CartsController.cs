@@ -76,16 +76,8 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             if (user is null)
             {
                 string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                if (userId is null)
-                    return NotFound();
-
+                if (userId is null) return NotFound();
                 user = await _userManager.FindByIdAsync(userId);
-            }
-
-            if (user is null)
-            {
-                return NotFound();
             }
 
             var carts = await _cartRepository.GetAsync(e => e.ApplicationUserId == user.Id, includes: [e => e.Product]);
@@ -93,7 +85,8 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             return Ok(new
             {
                 Carts = carts,
-                TotalPrice = carts.Sum(e => e.Product.Price * e.Count)
+                // تم استخدام PriceAfterDiscount لضمان دقة الإجمالي
+                TotalPrice = carts.Sum(e => e.Product.PriceAfterDiscount * e.Count)
             });
         }
 
@@ -202,36 +195,31 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             if (user is null)
             {
                 string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                if (userId is null)
-                    return NotFound();
-
+                if (userId is null) return NotFound();
                 user = await _userManager.FindByIdAsync(userId);
-            }
-
-            if (user is null)
-            {
-                return NotFound();
             }
 
             var carts = await _cartRepository.GetAsync(e => e.ApplicationUserId == user.Id, includes: [e => e.Product]);
 
+            if (!carts.Any()) return BadRequest("Cart is empty");
+
+            // 1. إنشاء الأوردر وحساب الإجمالي النهائي بالخصومات
             await _orderRepository.CreateAsync(new()
             {
                 ApplicationUserId = user.Id,
                 DateTime = DateTime.UtcNow,
                 OrderStatus = OrderStatus.pending,
                 PaymentMethod = PaymentMethod.Visa,
-                TotalPrice = (double)carts.Sum(e => e.Product.Price * e.Count),
+                // تحويل الـ decimal لـ double حسب موديل الأوردر عندك
+                TotalPrice = (double)carts.Sum(e => e.Product.PriceAfterDiscount * e.Count),
             });
             await _orderRepository.CommitAsync();
 
             var order = (await _orderRepository.GetAsync(e => e.ApplicationUserId == user.Id))
-                .OrderBy(e => e.Id)
-                .LastOrDefault();
+                        .OrderBy(e => e.Id)
+                        .LastOrDefault();
 
-            if (order is null)
-                return NotFound();
+            if (order is null) return NotFound();
 
             var options = new SessionCreateOptions
             {
@@ -242,6 +230,7 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                 CancelUrl = $"{Request.Scheme}://{Request.Host}/Customer/Checkout/Cancel?orderId={order.Id}",
             };
 
+            // 2. إضافة المنتجات لجلسة Stripe بالأسعار بعد الخصم
             foreach (var item in carts)
             {
                 options.LineItems.Add(new SessionLineItemOptions
@@ -254,23 +243,20 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                             Name = item.Product.Name,
                             Description = item.Product.Description
                         },
-                        UnitAmount = (long)item.Product.Price * 100, // 400.00
+                        // تحويل السعر لـ Cents (ضرب في 100) وإرسال السعر المخفض
+                        UnitAmount = (long)(item.Product.PriceAfterDiscount * 100),
                     },
                     Quantity = item.Count,
                 });
             }
 
-
             var service = new SessionService();
             var session = service.Create(options);
             order.SessionId = session.Id;
             await _orderRepository.CommitAsync();
-            return Ok(new
-            {
-                url = session.Url
-            });
-        }
 
+            return Ok(new { url = session.Url });
+        }
 
     }
 }
