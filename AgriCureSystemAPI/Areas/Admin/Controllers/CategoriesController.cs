@@ -27,13 +27,21 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
         [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
-            var categories = await _categoryRepository.GetAsync();
+            var categories = await _categoryRepository.GetAsync(includeProperties: "Products");
 
             var statistics = new
             {
                 TotalCount = categories.Count(),
-                ActiveCount = categories.Count(c => c.Status == true), 
-                Data = categories 
+                ActiveCount = categories.Count(c => c.Status == true),
+
+                Data = categories.Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Status,
+                   
+                    ProductsCount = c.Products != null ? c.Products.Count() : 0
+                })
             };
 
             return Ok(statistics);
