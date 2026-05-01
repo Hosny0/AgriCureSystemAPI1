@@ -33,5 +33,6 @@
 
         public string? TransactionId { get; set; }
         public string? SessionId { get; set; }
+        public ICollection<OrderItem> OrderItems { get; set; }
     }
 }

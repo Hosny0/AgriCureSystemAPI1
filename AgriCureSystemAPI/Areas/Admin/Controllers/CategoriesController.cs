@@ -29,7 +29,14 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
         {
             var categories = await _categoryRepository.GetAsync();
 
-            return Ok(categories);
+            var statistics = new
+            {
+                TotalCount = categories.Count(),
+                ActiveCount = categories.Count(c => c.Status == true), 
+                Data = categories 
+            };
+
+            return Ok(statistics);
         }
 
         [HttpPost("Create")]

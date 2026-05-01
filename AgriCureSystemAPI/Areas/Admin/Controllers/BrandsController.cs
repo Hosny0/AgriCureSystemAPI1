@@ -28,7 +28,14 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
         {
             var brands = await _brandRepository.GetAsync();
 
-            return Ok(brands);
+            var statistics = new
+            {
+                TotalCount = brands.Count(),
+                ActiveCount = brands.Count(c => c.Status == true), 
+                Data = brands 
+            };
+
+            return Ok(statistics);
         }
 
         [HttpPost("Create")]

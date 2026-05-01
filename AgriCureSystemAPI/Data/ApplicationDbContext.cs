@@ -24,7 +24,7 @@ namespace AgriCureSystemAPI.Data
         public DbSet<Review> Reviews { get; set; }
 
 
-        
+
         public ApplicationDbContext()
         {
         }
@@ -33,8 +33,8 @@ namespace AgriCureSystemAPI.Data
         {
             base.OnConfiguring(optionsBuilder);
 
-            optionsBuilder.UseSqlServer("Server = db48330.public.databaseasp.net; Database=db48330; User Id = db48330; Password=Jp8+o3#HB?q9; Encrypt=True; TrustServerCertificate=True;");
+            optionsBuilder.UseSqlServer("Server=db49525.public.databaseasp.net; Database=db49525; User Id=db49525; Password=A-e64T!zy=9M; Encrypt=True; TrustServerCertificate=True; MultipleActiveResultSets=True;");
         }
     }
-}
 
+}

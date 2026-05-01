@@ -21,12 +21,43 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
             _orderRepository = orderRepository;
         }
 
+
         [HttpGet("GetAll")]
         public async Task<IActionResult> GetAll()
         {
-            var orders = await _orderRepository.GetAsync();
+            var orders = await _orderRepository.GetAsync(includeProperties: "ApplicationUser,OrderItems.Product");
 
-            return Ok(orders);
+            var ordersData = orders.Select(o => new
+            {
+                o.Id,
+                o.DateTime,
+                o.TotalPrice,
+                OrderStatus = o.OrderStatus.ToString(), 
+                PaymentMethod = o.PaymentMethod.ToString(),
+
+                TotalItemsCount = o.OrderItems.Sum(oi => oi.Quantity),
+                ProductNames = o.OrderItems.Select(oi => oi.Product != null ? oi.Product.Name : "N/A").ToList(),
+
+                Customer = o.ApplicationUser != null ? new
+                {
+                    o.ApplicationUser.FirstName,
+                    o.ApplicationUser.LastName,
+                    o.ApplicationUser.Email,
+                    o.ApplicationUser.PhoneNumber
+                } : null,
+
+                o.Carrier,
+                o.TransactionId
+            });
+
+            return Ok(new
+            {
+                TotalOrders = orders.Count(),
+                PendingOrders = orders.Count(o => o.OrderStatus == OrderStatus.pending),
+                ShippedOrders = orders.Count(o => o.OrderStatus == OrderStatus.shipped),
+                CanceledOrders = orders.Count(o => o.OrderStatus == OrderStatus.canceled),
+                Data = ordersData
+            });
         }
 
         [HttpGet("Get/{id}")]

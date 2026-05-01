@@ -1,9 +1,7 @@
 ﻿using AgriCureSystemAPI.Data;
 using AgriCureSystemAPI.Repositories.IRepositories;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.ObjectModel;
 using System.Linq.Expressions;
-using System.Threading.Tasks;
 
 namespace AgriCureSystemAPI.Repositories
 {
@@ -18,64 +16,53 @@ namespace AgriCureSystemAPI.Repositories
             _db = _context.Set<T>();
         }
 
-        // CRUD
-        public async Task CreateAsync(T entity)
-        {
-            await _db.AddAsync(entity);
-        }
+        public async Task CreateAsync(T entity) => await _db.AddAsync(entity);
+        public void Edit(T entity) => _db.Update(entity);
+        public void Delete(T entity) => _db.Remove(entity);
 
-        public void Edit(T entity)
+        public async Task<IEnumerable<T>> GetAsync(
+            Expression<Func<T, bool>>? filter = null,
+            Expression<Func<T, object>>[]? includes = null,
+            string? includeProperties = null,
+            bool tracked = true)
         {
-            _db.Update(entity);
-        }
+            IQueryable<T> query = _db;
 
-        public void Delete(T entity)
-        {
-            _db.Remove(entity);
-        }
+            if (filter is not null) query = query.Where(filter);
 
-        public async Task<IEnumerable<T>> GetAsync(Expression<Func<T, bool>>? filter = null, Expression<Func<T, object>>[]? includes = null, bool tracked = true)
-        {
-            var entities = _db.AsQueryable<T>();
-
-            if(filter is not null)
+            // تطبيق الـ Includes (Expressions)
+            if (includes is not null)
             {
-                entities = entities.Where(filter);
+                foreach (var item in includes) query = query.Include(item);
             }
 
-            if(includes is not null)
+            // تطبيق الـ Includes (Strings) عشان الـ Nested Data
+            if (!string.IsNullOrWhiteSpace(includeProperties))
             {
-                foreach (var item in includes)
+                foreach (var includeProp in includeProperties.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
                 {
-                    entities = entities.Include(item);
+                    query = query.Include(includeProp.Trim());
                 }
             }
 
-            if(!tracked)
-            {
-                entities = entities.AsNoTracking();
-            }
+            if (!tracked) query = query.AsNoTracking();
 
-            return await entities.ToListAsync();
+            return await query.ToListAsync();
         }
 
-        public async Task<T?> GetOneAsync(Expression<Func<T, bool>>? filter = null, Expression<Func<T, object>>[]? includes = null, bool tracked = true)
+        public async Task<T?> GetOneAsync(
+            Expression<Func<T, bool>>? filter = null,
+            Expression<Func<T, object>>[]? includes = null,
+            string? includeProperties = null,
+            bool tracked = true)
         {
-            return (await GetAsync(filter, includes, tracked)).FirstOrDefault();
+            return (await GetAsync(filter, includes, includeProperties, tracked)).FirstOrDefault();
         }
 
         public async Task<bool> CommitAsync()
         {
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-                return false;
-            }
+            try { await _context.SaveChangesAsync(); return true; }
+            catch { return false; }
         }
     }
 }

@@ -33,7 +33,14 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
         {
             var products = await _productRepository.GetAsync(includes: [e => e.Category, e => e.Brand]);
 
-            return Ok(products);
+            var response = new
+            {
+                TotalCount = products.Count(),
+                ActiveCount = products.Count(p => p.Status == true), 
+                Data = products
+            };
+
+            return Ok(response);
         }
 
         [HttpPost("Create")]

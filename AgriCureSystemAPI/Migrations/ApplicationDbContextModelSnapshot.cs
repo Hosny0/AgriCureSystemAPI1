@@ -125,7 +125,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Brands");
+                    b.ToTable("Brands", (string)null);
                 });
 
             modelBuilder.Entity("AgriCureSystemAPI.Models.Cart", b =>
@@ -143,7 +143,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("Carts");
+                    b.ToTable("Carts", (string)null);
                 });
 
             modelBuilder.Entity("AgriCureSystemAPI.Models.Category", b =>
@@ -167,7 +167,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("AgriCureSystemAPI.Models.DiseaseScan", b =>
@@ -205,7 +205,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("DiseaseScan");
+                    b.ToTable("DiseaseScan", (string)null);
                 });
 
             modelBuilder.Entity("AgriCureSystemAPI.Models.Order", b =>
@@ -248,7 +248,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasIndex("ApplicationUserId");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("AgriCureSystemAPI.Models.OrderItem", b =>
@@ -269,7 +269,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("OrderItems");
+                    b.ToTable("OrderItems", (string)null);
                 });
 
             modelBuilder.Entity("AgriCureSystemAPI.Models.Product", b =>
@@ -319,7 +319,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
                 });
 
             modelBuilder.Entity("AgriCureSystemAPI.Models.Review", b =>
@@ -347,7 +347,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("AgriCureSystemAPI.Models.UserOTP", b =>
@@ -379,7 +379,7 @@ namespace AgriCureSystemAPI.Migrations
 
                     b.HasIndex("ApplicationUserId");
 
-                    b.ToTable("UserOTPs");
+                    b.ToTable("UserOTPs", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

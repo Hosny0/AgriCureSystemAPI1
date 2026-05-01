@@ -27,8 +27,48 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
         [HttpGet("Index")]
         public async Task<IActionResult> Index()
         {
+            // 1. جلب كل المستخدمين
             var users = await _userManager.Users.ToListAsync();
-            return Ok(users.Adapt<IEnumerable<UserResponse>>());
+            var responseList = new List<UserResponse>();
+
+            // تعريف العدادات
+            int adminCount = 0;
+            int blockedCount = 0;
+            int activeCount = 0;
+
+            foreach (var user in users)
+            {
+                var userDto = user.Adapt<UserResponse>();
+
+                var roles = await _userManager.GetRolesAsync(user);
+                userDto.Role = roles.FirstOrDefault() ?? "No Role";
+
+                if (roles.Contains(SD.Admin) || roles.Contains(SD.SuperAdmin))
+                {
+                    adminCount++;
+                }
+
+                if (user.LockoutEnd != null && user.LockoutEnd > DateTime.UtcNow)
+                {
+                    blockedCount++;
+                }
+                else
+                {
+                    activeCount++;
+                }
+
+                responseList.Add(userDto);
+            }
+            var statistics = new
+            {
+                TotalCount = users.Count,
+                ActiveCount = activeCount,
+                BlockedCount = blockedCount,
+                AdminCount = adminCount,
+                Data = responseList 
+            };
+
+            return Ok(statistics);
         }
 
         [HttpPut("LockUnLock/{id}")]

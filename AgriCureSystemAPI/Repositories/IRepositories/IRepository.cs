@@ -1,6 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
-using System.Linq;
+﻿using System.Linq.Expressions;
 
 namespace AgriCureSystemAPI.Repositories.IRepositories
 {
@@ -9,8 +7,18 @@ namespace AgriCureSystemAPI.Repositories.IRepositories
         Task CreateAsync(T entity);
         void Edit(T entity);
         void Delete(T entity);
-        Task<IEnumerable<T>> GetAsync(Expression<Func<T, bool>>? filter = null, Expression<Func<T, object>>[]? includes = null, bool tracked = true);
-        Task<T?> GetOneAsync(Expression<Func<T, bool>>? filter = null, Expression<Func<T, object>>[]? includes = null, bool tracked = true);
         Task<bool> CommitAsync();
+
+        Task<IEnumerable<T>> GetAsync(
+            Expression<Func<T, bool>>? filter = null,
+            Expression<Func<T, object>>[]? includes = null,
+            string? includeProperties = null,
+            bool tracked = true);
+
+        Task<T?> GetOneAsync(
+            Expression<Func<T, bool>>? filter = null,
+            Expression<Func<T, object>>[]? includes = null,
+            string? includeProperties = null,
+            bool tracked = true);
     }
 }
