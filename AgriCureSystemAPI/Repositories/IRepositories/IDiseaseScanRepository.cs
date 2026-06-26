@@ -1,9 +1,9 @@
 ﻿using AgriCureSystemAPI.Models;
-using AgriCureSystemAPI.Repositories.IRepositories;
 
-namespace AgriCureSystem.Repositories.IRepositories
+namespace AgriCureSystemAPI.Repositories.IRepositories
 {
     public interface IDiseaseScanRepository : IRepository<DiseaseScan>
     {
+        Task<IEnumerable<DiseaseScan>> GetUserScansAsync(string userId);
     }
 }

@@ -1,24 +1,26 @@
-﻿using AgriCureSystemAPI.Data;
+﻿using AgriCureSystemAPI.DTOs.Response;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Repositories.IRepositories;
+using AgriCureSystemAPI.Utility;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace AgriCureSystemAPI.Areas.Customer.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[area]/[controller]")]
     [ApiController]
-    [Authorize]
+    [Area("Customer")]
+    [Authorize(Roles = $"{SD.SuperAdmin},{SD.Admin},{SD.Customer},{SD.Employee}")]
     public class ReviewController : ControllerBase
     {
         private readonly IReviewRepository _reviewRepo;
+        private readonly IProductRepository _productRepo; // ✅ زودنا عشان نجيب الـ rate الجديد
 
-        public ReviewController(IReviewRepository reviewRepo)
+        public ReviewController(IReviewRepository reviewRepo, IProductRepository productRepo)
         {
             _reviewRepo = reviewRepo;
+            _productRepo = productRepo;
         }
 
         [HttpPost("AddRating")]
@@ -29,14 +31,12 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
 
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // استخدمنا الدالة المخصصة اللي لسه كاتبينها
             var existingReview = await _reviewRepo.GetUserReviewAsync(productId, currentUserId);
 
             if (existingReview != null)
             {
                 existingReview.RatingValue = ratingValue;
                 existingReview.CreatedAt = DateTime.UtcNow;
-
                 _reviewRepo.Edit(existingReview);
             }
             else
@@ -47,12 +47,27 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                     UserId = currentUserId,
                     RatingValue = ratingValue
                 };
-
                 await _reviewRepo.CreateAsync(newReview);
             }
 
-         
-            return Ok("The rating was successfully saved");
+            // ✅ Fix: حفظ في الـ DB
+            await _reviewRepo.CommitAsync();
+
+            // ✅ جيب الـ product بعد الحفظ عشان تحسب الـ rate الجديد
+            var product = await _productRepo.GetOneAsync(
+                e => e.ProductId == productId,
+                includes: [e => e.Reviews]
+            );
+
+            var response = new AddRatingResponse
+            {
+                Message = "The rating was successfully saved",
+                ProductId = productId,
+                NewRate = product?.Rate ?? 0,
+                ReviewsCount = product?.Reviews.Count ?? 0
+            };
+
+            return Ok(response);
         }
     }
 }

@@ -1,5 +1,4 @@
-using AgriCureSystem.Repositories;
-using AgriCureSystem.Repositories.IRepositories;
+
 using AgriCureSystemAPI.Data;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Repositories;
@@ -92,11 +91,7 @@ namespace AgriCureSystemAPI
 
 
 
-            builder.Services.AddHttpClient<AgriCureSystem.Services.PlantDiseaseApiService>(client =>
-            {
-                client.BaseAddress = new Uri(builder.Configuration["AiApiSettings:BaseUrl"]);
-            });
-
+         
 
 
             builder.Services.ConfigureApplicationCookie(options =>
@@ -106,6 +101,8 @@ namespace AgriCureSystemAPI
             });
 
             builder.Services.AddTransient<IEmailSender, EmailSender>();
+            builder.Services.AddHttpClient();
+            builder.Services.AddScoped<IAiService, AiService>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IDiseaseScanRepository, DiseaseScanRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();

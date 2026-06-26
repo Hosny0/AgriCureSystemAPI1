@@ -38,6 +38,7 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
                 {
                     c.Id,
                     c.Name,
+                    c.Description,
                     c.Status,
                    
                     ProductsCount = c.Products != null ? c.Products.Count() : 0

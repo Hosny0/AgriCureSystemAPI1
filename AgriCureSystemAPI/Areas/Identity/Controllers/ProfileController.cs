@@ -46,60 +46,59 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
         [HttpPut("UpdateProfile")]
         public async Task<IActionResult> UpdateProfile(ApplicationUserRequest applicationUserRequest)
         {
-            var user = await _userManager.GetUserAsync(User);
+            var userId = _userManager.GetUserId(User);
+            if (userId is null) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
             if (user is null) return NotFound();
 
-            // 1. تحديث البيانات العادية
+            // ✅ لوج كل خطوة عشان نشوف فين المشكلة
+            Console.WriteLine($"=== BEFORE UPDATE ===");
+            Console.WriteLine($"UserName in DB: {user.UserName}");
+            Console.WriteLine($"UserName requested: {applicationUserRequest.UserName}");
+
+            if (!string.IsNullOrEmpty(applicationUserRequest.UserName)
+                && applicationUserRequest.UserName != user.UserName)
+            {
+                var result = await _userManager.SetUserNameAsync(user, applicationUserRequest.UserName);
+
+                Console.WriteLine($"SetUserNameAsync result: {result.Succeeded}");
+                if (!result.Succeeded)
+                {
+                    Console.WriteLine($"Errors: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                    return BadRequest(result.Errors);
+                }
+            }
+
+            user = await _userManager.FindByIdAsync(userId);
+
+            Console.WriteLine($"=== AFTER SetUserName ===");
+            Console.WriteLine($"UserName in DB now: {user.UserName}");
+            Console.WriteLine($"NormalizedUserName: {user.NormalizedUserName}");
+
             user.FirstName = applicationUserRequest.FirstName;
             user.LastName = applicationUserRequest.LastName;
             user.PhoneNumber = applicationUserRequest.PhoneNumber;
             user.Address = applicationUserRequest.Address;
+            user.EmailConfirmed = true;
 
-            // 2. التحديث الصح للاسم (عشان NormalizedUserName يتحدث واللوجين يشتغل)
-            if (applicationUserRequest.UserName != user.UserName)
+            var updateResult = await _userManager.UpdateAsync(user);
+
+            Console.WriteLine($"UpdateAsync result: {updateResult.Succeeded}");
+
+            return Ok(new
             {
-                var result = await _userManager.SetUserNameAsync(user, applicationUserRequest.UserName);
-                if (!result.Succeeded) return BadRequest(result.Errors);
-            }
-
-            // 3. التحديث الصح للإيميل
-            if (applicationUserRequest.Email != user.Email)
-            {
-                var result = await _userManager.SetEmailAsync(user, applicationUserRequest.Email);
-                if (!result.Succeeded) return BadRequest(result.Errors);
-                user.EmailConfirmed = true; // تفعيل فوري عشان الـ Login ميرفضش
-            }
-
-            // 4. حفظ التغييرات وتحديث بصمة الأمان
-            await _userManager.UpdateAsync(user);
-            await _userManager.UpdateSecurityStampAsync(user); // مهمة جداً عشان التوكنز القديمة تبطل والجديدة تشتغل
-
-            return Ok(new { msg = "Profile updated successfully" });
-
+                msg = "Profile updated successfully",
+                newUserName = user.UserName,
+                newNormalizedUserName = user.NormalizedUserName,
+                userId = user.Id
+            });
         }
 
     }
     
-      //  [HttpPut("ChangePassword")]
-      //  public async Task<IActionResult> ChangePassword(ApplicationUserRequest applicationUserRequest)
-      //  {
-      //      var user = await _userManager.GetUserAsync(User);
-      //
-      //      if (user is null)
-      //          return NotFound();
-      //
-      //      var result = await _userManager.ChangePasswordAsync(user, applicationUserRequest.OldPassword, applicationUserRequest.NewPassword);
-      //
-      //      if (!result.Succeeded)
-      //      {
-      //          return BadRequest(result.Errors);
-      //      }
-      //
-      //      return Ok(new
-      //      {
-      //          msg = "Update profile "
-      //      });
-      //  }
-    
 }
+        //  }
+
+    
 

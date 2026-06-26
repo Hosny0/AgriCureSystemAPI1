@@ -94,53 +94,44 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
-            // 1. البحث عن المستخدم بالاسم أو الإيميل
+            // 1. البحث عن المستخدم
             var user = await _userManager.FindByNameAsync(loginRequest.EmailORUserName)
                     ?? await _userManager.FindByEmailAsync(loginRequest.EmailORUserName);
 
             if (user is null)
+                return BadRequest("Invalid User Name / Email OR Password");
+
+            // 2. التحقق من الـ Lockout يدوياً
+            if (await _userManager.IsLockedOutAsync(user))
             {
+                var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
+                var remainingDays = (lockoutEnd!.Value - DateTimeOffset.UtcNow).Days;
+                if (remainingDays > 0)
+                    return BadRequest($"Your account is suspended. Try again after {remainingDays} days.");
+                else
+                    return BadRequest("Too many attempts, try again after a few minutes.");
+            }
+
+            // 3. التحقق من الإيميل
+            if (!user.EmailConfirmed)
+                return BadRequest("Please Confirm Your Email First!!");
+
+            // ✅ 4. CheckPasswordAsync بدل PasswordSignInAsync
+            // عشان مش بتتأثرش بالـ Security Stamp
+            var isPasswordValid = await _userManager.CheckPasswordAsync(user, loginRequest.Password);
+
+            if (!isPasswordValid)
+            {
+                // زيادة عداد المحاولات الفاشلة يدوياً
+                await _userManager.AccessFailedAsync(user);
                 return BadRequest("Invalid User Name / Email OR Password");
             }
 
-            // 2. محاولة تسجيل الدخول 
-            // ملاحظة: استخدمنا الـ User Object مباشرة بدلاً من UserName ليتوافق مع تحديثاتك
-            var result = await _signInManager.PasswordSignInAsync(user, loginRequest.Password, loginRequest.RememberMe, lockoutOnFailure: true);
+            // 5. reset عداد المحاولات الفاشلة
+            await _userManager.ResetAccessFailedCountAsync(user);
 
-            // 3. معالجة جميع حالات الفشل (مأخوذة من كود الـ MVC الجديد)
-            if (!result.Succeeded)
-            {
-                if (result.IsLockedOut)
-                {
-                    var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
-
-                    if (lockoutEnd.HasValue && lockoutEnd.Value > DateTimeOffset.UtcNow)
-                    {
-                        var remainingDays = (lockoutEnd.Value - DateTimeOffset.UtcNow).Days;
-
-                        if (remainingDays > 0)
-                            return BadRequest($"Your account is suspended by the admin. Try again after {remainingDays} days.");
-                        else
-                            return BadRequest("Too many attempts, try again after a few minutes.");
-                    }
-                    else
-                    {
-                        return BadRequest("Your account is locked.");
-                    }
-                }
-                else if (result.IsNotAllowed && !user.EmailConfirmed)
-                {
-                    return BadRequest("Please Confirm Your Email First!!");
-                }
-                else
-                {
-                    return BadRequest("Invalid User Name / Email OR Password");
-                }
-            }
-
-            // 4. في حالة النجاح: إنشاء التوكنز (مأخوذة من كود الـ API القديم)
+            // 6. إنشاء التوكنز
             var userRoles = await _userManager.GetRolesAsync(user);
-
             var claims = new[]
             {
         new Claim(ClaimTypes.Name, user.UserName!),
@@ -150,17 +141,16 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
     };
 
-            var accesstoken = _tokenServices.GenerateAccessToken(claims);
+            var accessToken = _tokenServices.GenerateAccessToken(claims);
             var refreshToken = _tokenServices.GenerateRefreshToken();
 
             user.RefreshToken = refreshToken;
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-
             await _userManager.UpdateAsync(user);
-             
+
             return Ok(new
             {
-                AccessToken = accesstoken,
+                AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 ValidTo = "30 min",
                 RefreshTokenExpiration = "7 days"

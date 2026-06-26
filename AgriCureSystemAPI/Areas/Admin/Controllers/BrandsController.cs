@@ -37,6 +37,7 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
                 Data = brands.Select(b => new
                 {
                     b.Id, 
+                    b.Description, 
                     b.Name,
                     b.Status,
 

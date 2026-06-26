@@ -1,9 +1,11 @@
 ﻿using AgriCureSystemAPI.Data;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using AgriCureSystemAPI.Models;
-using AgriCureSystem.Repositories.IRepositories;
-using AgriCureSystemAPI.Repositories;
 
-namespace AgriCureSystem.Repositories
+using AgriCureSystemAPI.Repositories.IRepositories;
+
+namespace AgriCureSystemAPI.Repositories
 {
     public class DiseaseScanRepository : Repository<DiseaseScan>, IDiseaseScanRepository
     {
@@ -12,6 +14,13 @@ namespace AgriCureSystem.Repositories
         public DiseaseScanRepository(ApplicationDbContext context) : base(context)
         {
             _context = context;
+        }
+
+        public async Task<IEnumerable<DiseaseScan>> GetUserScansAsync(string userId)
+        {
+            return await _context.DiseaseScan
+                                 .Where(s => s.UserId == userId)
+                                 .ToListAsync();
         }
     }
 }

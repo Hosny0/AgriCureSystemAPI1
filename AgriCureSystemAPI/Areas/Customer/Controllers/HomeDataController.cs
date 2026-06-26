@@ -1,8 +1,10 @@
 ﻿using AgriCureSystemAPI.Data;
+using AgriCureSystemAPI.DTOs.Response;
 using AgriCureSystemAPI.Models;
 using AgriCureSystemAPI.Utility;
 using ECommerce.API.DTOs.Requests;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,14 +14,15 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
     [ApiController]
     [Area("Customer")]
     [Authorize(Roles = $"{SD.SuperAdmin},{SD.Admin},{SD.Customer},{SD.Employee}")]
-
     public class HomeDataController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public HomeDataController(ApplicationDbContext context)
+        public HomeDataController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         [HttpGet("Index")]
@@ -30,103 +33,161 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             const double discount = 50;
             IQueryable<Product> products = _context.Products;
 
-            // Join
-            products = products.Include(e => e.Category).Include(e => e.Reviews);
-
+            products = products
+                .Include(e => e.Category)
+                .Include(e => e.Brand)       
+                .Include(e => e.Reviews);
 
             var allCategories = _context.Categories
-                                .Select(c => new { Id = c.Id, Name = c.Name })
-                                .ToList();
+                .Select(c => new { Id = c.Id, Name = c.Name })
+                .ToList();
 
-
-            // Filter
+            // Filters
             if (productFilterRequest.ProductName is not null)
-            {
                 products = products.Where(e => e.Name.Contains(productFilterRequest.ProductName));
-            }
 
             if (productFilterRequest.MinPrice is not null)
-            {
                 products = products.Where(e => e.Price - e.Price * ((decimal)e.Discount / 100) >= (decimal)productFilterRequest.MinPrice);
-            }
 
             if (productFilterRequest.MaxPrice is not null)
-            {
                 products = products.Where(e => e.Price - e.Price * ((decimal)e.Discount / 100) <= (decimal)productFilterRequest.MaxPrice);
-            }
 
             if (productFilterRequest.CategoryId > 0)
-            {
                 products = products.Where(e => e.CategoryId == productFilterRequest.CategoryId);
-            }
             else if (!string.IsNullOrEmpty(productFilterRequest.CategoryName))
-            {
                 products = products.Where(e => e.Category.Name.Contains(productFilterRequest.CategoryName));
-            }
 
             if (productFilterRequest.IsHot)
-            {
                 products = products.Where(e => e.Discount > discount);
-            }
 
             // Pagination
-            if (page < 1)
-                page = 1;
+            if (page < 1) page = 1;
+
+            var totalCount = products.Count();
 
             var pagination = new
             {
-                TotalNumberOfPage = Math.Ceiling(products.Count() / 8.0),
+                TotalNumberOfPage = Math.Ceiling(totalCount / 8.0),
                 CurrentPage = page
             };
 
-            // Data
+           
+            var productList = products
+                .Skip((page - 1) * 8)
+                .Take(8)
+                .ToList()
+                .Select(p => new ProductListResponse
+                {
+                    ProductId = p.ProductId,
+                    Name = p.Name,
+                    Description = p.Description,
+                    MainImg = p.MainImg,
+                    Price = p.Price,
+                    PriceAfterDiscount = p.PriceAfterDiscount,
+                    Discount = p.Discount,
+                    Rate = p.Rate,
+                    ReviewsCount = p.Reviews.Count,
+                    CategoryName = p.Category?.Name ?? string.Empty,
+                    BrandName = p.Brand?.Name ?? string.Empty
+                }).ToList();
+
             var returned = new
             {
                 ProductName = productFilterRequest.ProductName,
                 MinPrice = productFilterRequest.MinPrice,
                 MaxPrice = productFilterRequest.MaxPrice,
                 CategoryId = productFilterRequest.CategoryId,
-                CategoryName = productFilterRequest.CategoryName, 
+                CategoryName = productFilterRequest.CategoryName,
                 IsHot = productFilterRequest.IsHot,
-                products = products.Skip((page - 1) * 8).Take(8).ToList()
+                Products = productList
             };
 
             return Ok(new
             {
-                CategoriesList = allCategories, 
+                CategoriesList = allCategories,
                 pagination,
                 returned
             });
         }
 
         [HttpGet("Details/{id}")]
-        public IActionResult GetOne([FromRoute] int id)
+        public async Task<IActionResult> GetOne([FromRoute] int id)
         {
-            var product = _context.Products.Include(e => e.Category).Include(e => e.Brand).Include(e => e.Reviews).FirstOrDefault(e => e.ProductId == id);
+            var product = _context.Products
+                .Include(e => e.Category)
+                .Include(e => e.Brand)
+                .Include(e => e.Reviews)
+                .FirstOrDefault(e => e.ProductId == id);
 
-            if (product is not null)
+            if (product is null)
+                return NotFound();
+
+            var userIds = product.Reviews.Select(r => r.UserId).Distinct().ToList();
+            var users = await _userManager.Users
+                .Where(u => userIds.Contains(u.Id))
+                .ToListAsync();
+
+            var productResponse = new ProductDetailsResponse
             {
-                var relatedProducts = _context.Products.Include(e => e.Category).Include(e => e.Reviews).Where(e => e.CategoryId == product.CategoryId && e.ProductId != product.ProductId).Take(4);
-
-            //    var topProduct = _context.Products.Include(e => e.Category).Where(e => e.ProductId != product.ProductId).OrderByDescending(e => e.Traffic).Take(4);
-
-            //    var similarProduct = _context.Products.Include(e => e.Category).Where(e => e.Name.Contains(product.Name) && e.ProductId != product.ProductId).Take(4);
-
-                var ProductWithRelated = new
+                ProductId = product.ProductId,
+                Name = product.Name,
+                Description = product.Description,
+                Status = product.Status,
+                MainImg = product.MainImg,
+                Price = product.Price,
+                PriceAfterDiscount = product.PriceAfterDiscount,
+                Discount = product.Discount,
+                Quantity = product.Quantity,
+                CategoryId = product.CategoryId,
+                CategoryName = product.Category?.Name ?? string.Empty,
+                BrandId = product.BrandId,
+                BrandName = product.Brand?.Name ?? string.Empty,
+                Rate = product.Rate,
+                ReviewsCount = product.Reviews.Count,
+                Reviews = product.Reviews.Select(r =>
                 {
-                    Product = product,
-                    RelatedProducts = relatedProducts.ToList(),
-                  //  TopProduct = topProduct.ToList(),
-                  //  SimilarProduct = similarProduct.ToList()
-                };
+                    var user = users.FirstOrDefault(u => u.Id == r.UserId);
+                    return new ReviewResponse
+                    {
+                        UserId = r.UserId,
+                        UserName = user != null ? $"{user.FirstName} {user.LastName}" : "Unknown",
+                        RatingValue = r.RatingValue,
+                        CreatedAt = r.CreatedAt
+                    };
+                }).ToList()
+            };
 
-                product.Traffic++;
-                _context.SaveChanges();
+            var relatedProducts = _context.Products
+                .Include(e => e.Category)
+                .Include(e => e.Brand)
+                .Include(e => e.Reviews)
+                .Where(e => e.CategoryId == product.CategoryId && e.ProductId != product.ProductId)
+                .Take(4)
+                .ToList()
+                .Select(p => new ProductListResponse
+                {
+                    ProductId = p.ProductId,
+                    Name = p.Name,
+                    Description = p.Description,
+                    MainImg = p.MainImg,
+                    Price = p.Price,
+                    PriceAfterDiscount = p.PriceAfterDiscount,
+                    Discount = p.Discount,
+                    Rate = p.Rate,
+                    ReviewsCount = p.Reviews.Count,
+                    CategoryName = p.Category?.Name ?? string.Empty,
+                    BrandName = p.Brand?.Name ?? string.Empty
+                }).ToList();
 
-                return Ok(ProductWithRelated);
-            }
+            product.Traffic++;
+            _context.SaveChanges();
 
-            return NotFound();
+            return Ok(new
+            {
+                Product = productResponse,
+                RelatedProducts = relatedProducts
+            });
         }
     }
+    
 }

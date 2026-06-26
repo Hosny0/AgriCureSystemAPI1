@@ -80,24 +80,34 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
                 return NotFound();
 
             if (await _userManager.IsInRoleAsync(user, SD.SuperAdmin))
-            {
                 return BadRequest(new ErrorModelResponse()
                 {
                     Code = "Error",
                     Description = "You cannot block a SuperAdmin account"
                 });
-            }
 
-            user.LockoutEnabled = !user.LockoutEnabled;
-
-            if (user.LockoutEnabled)
-                user.LockoutEnd = DateTime.UtcNow.AddDays(30);
-            else
+            // ✅ الصح: نبص على LockoutEnd بس
+            if (user.LockoutEnd != null && user.LockoutEnd > DateTime.UtcNow)
+            {
+                // متبلوك → افتح
                 user.LockoutEnd = null;
+                user.LockoutEnabled = false;
+            }
+            else
+            {
+                // مش متبلوك → بلوك
+                user.LockoutEnabled = true;
+                user.LockoutEnd = DateTime.UtcNow.AddDays(30);
+            }
 
             await _userManager.UpdateAsync(user);
 
-            return NoContent();
+            return Ok(new
+            {
+                Message = user.LockoutEnd == null
+                    ? $"{user.FirstName} has been unlocked successfully"
+                    : $"{user.FirstName} has been locked successfully"
+            });
         }
 
         [HttpPut("UpdateRole/{userId}")]
