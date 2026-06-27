@@ -25,16 +25,6 @@ namespace AgriCureSystemAPI.Data
 
 
 
-        public ApplicationDbContext()
-        {
-        }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            base.OnConfiguring(optionsBuilder);
-
-            optionsBuilder.UseSqlServer("Server=db49525.public.databaseasp.net; Database=db49525; User Id=db49525; Password=A-e64T!zy=9M; Encrypt=True; TrustServerCertificate=True; MultipleActiveResultSets=True;");
-        }
     }
 
 }
