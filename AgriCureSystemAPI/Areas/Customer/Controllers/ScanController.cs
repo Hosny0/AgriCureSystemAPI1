@@ -46,27 +46,29 @@ public class DiseaseScanController : ControllerBase
             await request.Image.CopyToAsync(stream);
         }
 
-        // ✅ Call AI Service
+        // ✅ Call AI Service — دلوقتي بيرجع AiPredictionResponse مش string
         var aiResult = await _aiService.PredictDiseaseAsync(request.Image, request.PlantName);
         if (aiResult is null)
             return StatusCode(500, "AI API error.");
 
-        // ✅ Save in DB
+        // ✅ Save in DB — كل field بيتملى من الـ AI response صح
         var scan = new DiseaseScan
         {
-            PlantName = request.PlantName,
-            DiseaseName = aiResult, // ✅ الـ response string جاهز
-            ConfidenceRate = string.Empty,
-            Description = string.Empty,
-            Symptoms = string.Empty,
-            Treatment = string.Empty,
+            PlantName = aiResult.Plant,
+            DiseaseName = aiResult.Prediction,
+            ConfidenceRate = aiResult.Confidence,
+            Description = aiResult.Details.Description,
+            Symptoms = aiResult.Details.Symptoms,
+            Treatment = aiResult.Details.Treatment,
             ImageUrl = fileName,
             ScanDate = DateTime.UtcNow,
             UserId = currentUserId!
         };
 
         await _diseaseScanRepo.CreateAsync(scan);
-        await _diseaseScanRepo.CommitAsync();
+        var saved = await _diseaseScanRepo.CommitAsync();
+        if (!saved)
+            return StatusCode(500, "Failed to save scan result.");
 
         return Ok(new DiseaseScanResponse
         {
@@ -80,7 +82,6 @@ public class DiseaseScanController : ControllerBase
             ImageUrl = scan.ImageUrl,
             ScanDate = scan.ScanDate
         });
-
     }
 
     [HttpGet("History")]
@@ -131,26 +132,29 @@ public class DiseaseScanController : ControllerBase
             ScanDate = scan.ScanDate
         });
     }
-        [HttpDelete("Delete/{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var scan = await _diseaseScanRepo.GetOneAsync(
-                s => s.Id == id && s.UserId == currentUserId
-            );
+    [HttpDelete("Delete/{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (scan is null)
-                return NotFound();
+        var scan = await _diseaseScanRepo.GetOneAsync(
+            s => s.Id == id && s.UserId == currentUserId
+        );
 
-            // ✅ Delete image from wwwroot
-            var filePath = Path.Combine(_env.WebRootPath, "ScanImage", scan.ImageUrl);
-            if (System.IO.File.Exists(filePath))
-                System.IO.File.Delete(filePath);
+        if (scan is null)
+            return NotFound();
 
-            _diseaseScanRepo.Delete(scan);
-            await _diseaseScanRepo.CommitAsync();
+        // ✅ Delete image from wwwroot
+        var filePath = Path.Combine(_env.WebRootPath, "ScanImage", scan.ImageUrl);
+        if (System.IO.File.Exists(filePath))
+            System.IO.File.Delete(filePath);
 
-            return NoContent();
-        }
+        _diseaseScanRepo.Delete(scan);
+        var saved = await _diseaseScanRepo.CommitAsync();
+        if (!saved)
+            return StatusCode(500, "Failed to delete scan.");
+
+        return NoContent();
     }
+}

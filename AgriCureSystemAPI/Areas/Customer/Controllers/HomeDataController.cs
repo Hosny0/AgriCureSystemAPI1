@@ -169,6 +169,8 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                     ProductId = p.ProductId,
                     Name = p.Name,
                     Description = p.Description,
+                    Quantity = p.Quantity,  // ✅ زود السطر ده
+
                     MainImg = p.MainImg,
                     Price = p.Price,
                     PriceAfterDiscount = p.PriceAfterDiscount,

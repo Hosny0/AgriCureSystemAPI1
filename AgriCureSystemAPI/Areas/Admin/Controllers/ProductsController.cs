@@ -38,7 +38,7 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
         public async Task<IActionResult> Index()
         {
             var products = await _productRepository.GetAsync(
-                includes: [e => e.Category, e => e.Brand, e => e.Reviews]  // ✅ زودنا Reviews
+                includes: [e => e.Category, e => e.Brand, e => e.Reviews]
             );
 
             var data = products.Select(p => new ProductListResponse
@@ -50,6 +50,7 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
                 Price = p.Price,
                 PriceAfterDiscount = p.PriceAfterDiscount,
                 Discount = p.Discount,
+                Quantity = p.Quantity,
                 Rate = p.Rate,
                 ReviewsCount = p.Reviews.Count,
                 CategoryName = p.Category?.Name ?? string.Empty,
@@ -72,6 +73,16 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
             if (productRequest.MainImg is null || productRequest.MainImg.Length == 0)
                 return BadRequest("Main image is required.");
 
+            // ✅ تحقق إن الـ Category موجودة
+            var category = await _categoryRepository.GetOneAsync(e => e.Id == productRequest.CategoryId);
+            if (category is null)
+                return BadRequest($"Category with id {productRequest.CategoryId} not found.");
+
+            // ✅ تحقق إن الـ Brand موجودة
+            var brand = await _brandRepository.GetOneAsync(e => e.Id == productRequest.BrandId);
+            if (brand is null)
+                return BadRequest($"Brand with id {productRequest.BrandId} not found.");
+
             var product = productRequest.Adapt<Product>();
 
             var fileName = Guid.NewGuid().ToString() + Path.GetExtension(productRequest.MainImg.FileName);
@@ -85,7 +96,11 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
             product.MainImg = fileName;
 
             await _productRepository.CreateAsync(product);
-            await _productRepository.CommitAsync(); // ✅ Fix
+
+            // ✅ تحقق إن الـ Save نجح
+            var saved = await _productRepository.CommitAsync();
+            if (!saved)
+                return StatusCode(500, "Failed to save product. Please try again.");
 
             return Created();
         }
@@ -95,13 +110,12 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
         {
             var product = await _productRepository.GetOneAsync(
                 e => e.ProductId == productId,
-                includes: [e => e.Category, e => e.Brand, e => e.Reviews]  // ✅ زودنا includes
+                includes: [e => e.Category, e => e.Brand, e => e.Reviews]
             );
 
             if (product is null)
                 return NotFound();
 
-            // ✅ جيب اليوزرز بتاعين الـ reviews
             var userIds = product.Reviews.Select(r => r.UserId).Distinct().ToList();
             var users = await _userManager.Users
                 .Where(u => userIds.Contains(u.Id))
@@ -148,8 +162,18 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
             if (productInDB is null)
                 return NotFound();
 
+            // ✅ تحقق إن الـ Category موجودة
+            var category = await _categoryRepository.GetOneAsync(e => e.Id == updateProductRequest.CategoryId);
+            if (category is null)
+                return BadRequest($"Category with id {updateProductRequest.CategoryId} not found.");
+
+            // ✅ تحقق إن الـ Brand موجودة
+            var brand = await _brandRepository.GetOneAsync(e => e.Id == updateProductRequest.BrandId);
+            if (brand is null)
+                return BadRequest($"Brand with id {updateProductRequest.BrandId} not found.");
+
             var product = updateProductRequest.Adapt<Product>();
-            product.ProductId = id; // ✅ Fix
+            product.ProductId = id;
 
             if (updateProductRequest.MainImg is not null && updateProductRequest.MainImg.Length > 0)
             {
@@ -173,7 +197,11 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
             }
 
             _productRepository.Edit(product);
-            await _productRepository.CommitAsync(); // ✅ Fix
+
+            // ✅ تحقق إن الـ Save نجح
+            var saved = await _productRepository.CommitAsync();
+            if (!saved)
+                return StatusCode(500, "Failed to update product. Please try again.");
 
             return NoContent();
         }
@@ -191,7 +219,11 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
                 System.IO.File.Delete(oldFilePath);
 
             _productRepository.Delete(product);
-            await _productRepository.CommitAsync(); // ✅ Fix
+
+            // ✅ تحقق إن الـ Save نجح
+            var saved = await _productRepository.CommitAsync();
+            if (!saved)
+                return StatusCode(500, "Failed to delete product. Please try again.");
 
             return NoContent();
         }

@@ -4,6 +4,6 @@ namespace AgriCureSystemAPI.Services
 {
     public interface IAiService
     {
-        Task<string?> PredictDiseaseAsync(IFormFile image, string plantName);
+        Task<AiPredictionResponse?> PredictDiseaseAsync(IFormFile image, string plantName);
     }
 }
