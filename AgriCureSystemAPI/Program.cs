@@ -101,8 +101,10 @@ namespace AgriCureSystemAPI
             });
 
             builder.Services.AddTransient<IEmailSender, EmailSender>();
-            builder.Services.AddHttpClient();
             builder.Services.AddScoped<IAiService, AiService>();
+            builder.Services.AddScoped<IRobotService, RobotService>();
+            builder.Services.AddScoped<IPlantClassifierService, PlantClassifierService>();
+            builder.Services.AddHttpClient();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IDiseaseScanRepository, DiseaseScanRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
