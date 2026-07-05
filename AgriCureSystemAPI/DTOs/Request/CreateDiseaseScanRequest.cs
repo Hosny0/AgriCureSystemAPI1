@@ -5,7 +5,7 @@ namespace AgriCureSystemAPI.DTOs.Request
     public class CreateDiseaseScanRequest
     {
         [Required]
-        public string PlantName { get; set; } = string.Empty; 
+        public string PlantName { get; set; } = string.Empty;  
 
         [Required]
         public IFormFile Image { get; set; } = null!;
