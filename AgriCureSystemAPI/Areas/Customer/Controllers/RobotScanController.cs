@@ -16,61 +16,38 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
     public class RobotScanController : ControllerBase
     {
         private readonly IRobotService _robotService;
-        private readonly IPlantClassifierService _plantClassifierService;
-        private readonly IAiService _aiService;
         private readonly IDiseaseScanRepository _diseaseScanRepo;
         private readonly IConfiguration _configuration;
 
         public RobotScanController(
             IRobotService robotService,
-            IPlantClassifierService plantClassifierService,
-            IAiService aiService,
             IDiseaseScanRepository diseaseScanRepo,
             IConfiguration configuration)
         {
             _robotService = robotService;
-            _plantClassifierService = plantClassifierService;
-            _aiService = aiService;
             _diseaseScanRepo = diseaseScanRepo;
             _configuration = configuration;
         }
 
-        // ✅ Helper — يحلل صورة واحدة بالـ 3 APIs
+        // ✅ Helper — يحفظ scan من Robot مباشرة
         private async Task<DiseaseScanResponse?> ProcessSingleScan(
             RobotScanItem robotScan,
-            HttpClient httpClient,
             string robotBaseUrl,
             string currentUserId)
         {
             try
             {
-                // 1️⃣ جيب الصورة من Robot API
                 var fullImageUrl = $"{robotBaseUrl}{robotScan.ImageUrl}";
-                var imageBytes = await httpClient.GetByteArrayAsync(fullImageUrl);
-                var fileName = $"{robotScan.ScanId}.jpg";
 
-                // 2️⃣ Plant Classifier — اعرف اسم النبات
-                var plantResult = await _plantClassifierService.ClassifyPlantAsync(imageBytes, fileName);
-                if (plantResult is null || !plantResult.IsValidPlant)
-                    return null;
-
-                // 3️⃣ Disease AI — جيب التفاصيل
-                var imageFile = new FormFile(
-                    new MemoryStream(imageBytes), 0, imageBytes.Length, "file", fileName
-                );
-                var aiResult = await _aiService.PredictDiseaseAsync(imageFile, plantResult.PlantNameEn);
-                if (aiResult is null)
-                    return null;
-
-                // 4️⃣ احفظ في الداتابيز
+                // ✅ احفظ في الداتابيز مباشرة من بيانات الـ Robot
                 var scan = new DiseaseScan
                 {
-                    PlantName = plantResult.PlantNameEn,
-                    DiseaseName = aiResult.Prediction,
+                    PlantName = robotScan.Disease,
+                    DiseaseName = robotScan.Disease,
                     ConfidenceRate = $"{robotScan.Confidence}%",
-                    Description = aiResult.Details.Description,
-                    Symptoms = aiResult.Details.Symptoms,
-                    Treatment = aiResult.Details.Treatment,
+                    Description = robotScan.Recommendation,
+                    Symptoms = string.Empty,
+                    Treatment = robotScan.Recommendation,
                     ImageUrl = fullImageUrl,
                     ScanDate = DateTime.UtcNow,
                     UserId = currentUserId
@@ -99,7 +76,7 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
         }
 
         // ✅ آخر يمين + يسار من الـ Robot
-        [HttpPost("ScanLatest")]
+        [HttpGet("ScanLatest")]
         public async Task<IActionResult> ScanLatest()
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -110,11 +87,10 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                 return NotFound("No latest scan available from robot.");
 
             var results = new List<DiseaseScanResponse>();
-            using var httpClient = new HttpClient();
 
             foreach (var robotScan in new[] { latest.Left, latest.Right }.Where(s => s is not null))
             {
-                var result = await ProcessSingleScan(robotScan!, httpClient, robotBaseUrl, currentUserId!);
+                var result = await ProcessSingleScan(robotScan!, robotBaseUrl, currentUserId!);
                 if (result is not null)
                     results.Add(result);
             }
@@ -126,7 +102,7 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
         }
 
         // ✅ كل صور الـ Robot
-        [HttpPost("ScanAll")]
+        [HttpGet("ScanAll")]
         public async Task<IActionResult> ScanAll()
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -137,11 +113,10 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                 return NotFound("No scans available from robot.");
 
             var results = new List<DiseaseScanResponse>();
-            using var httpClient = new HttpClient();
 
             foreach (var robotScan in robotScans.Scans)
             {
-                var result = await ProcessSingleScan(robotScan, httpClient, robotBaseUrl, currentUserId!);
+                var result = await ProcessSingleScan(robotScan, robotBaseUrl, currentUserId!);
                 if (result is not null)
                     results.Add(result);
             }
