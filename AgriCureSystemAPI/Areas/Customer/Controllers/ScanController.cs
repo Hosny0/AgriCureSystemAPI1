@@ -38,7 +38,6 @@ public class DiseaseScanController : ControllerBase
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        // ✅ Save image
         var fileName = Guid.NewGuid().ToString() + Path.GetExtension(request.Image.FileName);
         var filePath = Path.Combine(_env.WebRootPath, "ScanImage", fileName);
         using (var stream = System.IO.File.Create(filePath))
@@ -46,12 +45,10 @@ public class DiseaseScanController : ControllerBase
             await request.Image.CopyToAsync(stream);
         }
 
-        // ✅ Call AI Service — دلوقتي بيرجع AiPredictionResponse مش string
         var aiResult = await _aiService.PredictDiseaseAsync(request.Image, request.PlantName);
         if (aiResult is null)
             return StatusCode(500, "AI API error.");
 
-        // ✅ Save in DB — كل field بيتملى من الـ AI response صح
         var scan = new DiseaseScan
         {
             PlantName = aiResult.Plant,
@@ -145,7 +142,6 @@ public class DiseaseScanController : ControllerBase
         if (scan is null)
             return NotFound();
 
-        // ✅ Delete image from wwwroot
         var filePath = Path.Combine(_env.WebRootPath, "ScanImage", scan.ImageUrl);
         if (System.IO.File.Exists(filePath))
             System.IO.File.Delete(filePath);

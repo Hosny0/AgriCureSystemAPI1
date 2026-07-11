@@ -16,39 +16,79 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
     public class RobotScanController : ControllerBase
     {
         private readonly IRobotService _robotService;
+        private readonly IPlantClassifierService _plantClassifierService;
+        private readonly IAiService _aiService;
         private readonly IDiseaseScanRepository _diseaseScanRepo;
-        private readonly IConfiguration _configuration;
 
         public RobotScanController(
             IRobotService robotService,
-            IDiseaseScanRepository diseaseScanRepo,
-            IConfiguration configuration)
+            IPlantClassifierService plantClassifierService,
+            IAiService aiService,
+            IDiseaseScanRepository diseaseScanRepo)
         {
             _robotService = robotService;
+            _plantClassifierService = plantClassifierService;
+            _aiService = aiService;
             _diseaseScanRepo = diseaseScanRepo;
-            _configuration = configuration;
         }
 
-        // ✅ Helper — يحفظ scan من Robot مباشرة
-        private async Task<DiseaseScanResponse?> ProcessSingleScan(
+        private async Task<DiseaseScanResponse> ProcessSingleScan(
             RobotScanItem robotScan,
-            string robotBaseUrl,
             string currentUserId)
         {
             try
             {
-                var fullImageUrl = $"{robotBaseUrl}{robotScan.ImageUrl}";
+                // 1️⃣ حوّل الـ base64 لـ byte array
+                var imageBytes = Convert.FromBase64String(robotScan.ImageBase64);
+                var fileName = $"{robotScan.Direction}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.jpg";
 
-                // ✅ احفظ في الداتابيز مباشرة من بيانات الـ Robot
+                // 2️⃣ Plant Classifier — هل ده نبات؟
+                var plantResult = await _plantClassifierService.ClassifyPlantAsync(imageBytes, fileName);
+
+                // ✅ تحقق من الـ confidence
+                double confidence = 0;
+                if (plantResult?.Confidence != null)
+                {
+                    var confidenceStr = plantResult.Confidence.Replace("%", "").Trim();
+                    double.TryParse(confidenceStr,
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out confidence);
+                }
+
+                // ✅ لو مش نبات
+                if (plantResult is null || !plantResult.IsValidPlant || confidence < 90)
+                {
+                    return new DiseaseScanResponse
+                    {
+                        Description = "No valid plant detected in the image."
+                    };
+                }
+
+                // 3️⃣ Disease AI — بعت الصورة + اسم النبات
+                var imageFile = new FormFile(
+                    new MemoryStream(imageBytes), 0, imageBytes.Length, "file", fileName
+                );
+                var aiResult = await _aiService.PredictDiseaseAsync(imageFile, plantResult.PlantNameEn);
+
+                if (aiResult is null)
+                {
+                    return new DiseaseScanResponse
+                    {
+                        Description = "No valid plant detected in the image."
+                    };
+                }
+
+                // 4️⃣ احفظ في الداتابيز
                 var scan = new DiseaseScan
                 {
-                    PlantName = robotScan.Disease,
-                    DiseaseName = robotScan.Disease,
-                    ConfidenceRate = $"{robotScan.Confidence}%",
-                    Description = robotScan.Recommendation,
-                    Symptoms = string.Empty,
-                    Treatment = robotScan.Recommendation,
-                    ImageUrl = fullImageUrl,
+                    PlantName = plantResult.PlantNameEn,
+                    DiseaseName = aiResult.Prediction,
+                    ConfidenceRate = aiResult.Confidence,
+                    Description = aiResult.Details.Description,
+                    Symptoms = aiResult.Details.Symptoms,
+                    Treatment = aiResult.Details.Treatment,
+                    ImageUrl = fileName,
                     ScanDate = DateTime.UtcNow,
                     UserId = currentUserId
                 };
@@ -69,62 +109,48 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                     ScanDate = scan.ScanDate
                 };
             }
-            catch
+            catch (Exception ex)
             {
-                return null;
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                return new DiseaseScanResponse
+                {
+                    Description = "No valid plant detected in the image."
+                };
             }
         }
 
-        // ✅ آخر يمين + يسار من الـ Robot
         [HttpGet("ScanLatest")]
         public async Task<IActionResult> ScanLatest()
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var robotBaseUrl = _configuration["RobotApi:BaseUrl"]!;
 
             var latest = await _robotService.GetLatestScansAsync();
             if (latest is null)
                 return NotFound("No latest scan available from robot.");
 
-            var results = new List<DiseaseScanResponse>();
+            var results = new List<object>();
 
             foreach (var robotScan in new[] { latest.Left, latest.Right }.Where(s => s is not null))
             {
-                var result = await ProcessSingleScan(robotScan!, robotBaseUrl, currentUserId!);
-                if (result is not null)
+                var result = await ProcessSingleScan(robotScan!, currentUserId!);
+
+                // ✅ لو مش نبات ارجع رسالة بسيطة
+                if (result.Description == "No valid plant detected in the image.")
+                {
+                    results.Add(new { message = "No valid plant detected in the image." });
+                }
+                else
+                {
                     results.Add(result);
+                }
             }
 
             if (results.Count == 0)
-                return StatusCode(500, "Failed to process robot scans.");
-
-            return Ok(new { Total = results.Count, Results = results });
-        }
-
-        // ✅ كل صور الـ Robot
-        [HttpGet("ScanAll")]
-        public async Task<IActionResult> ScanAll()
-        {
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var robotBaseUrl = _configuration["RobotApi:BaseUrl"]!;
-
-            var robotScans = await _robotService.GetAllScansAsync();
-            if (robotScans is null || robotScans.Scans.Count == 0)
                 return NotFound("No scans available from robot.");
 
-            var results = new List<DiseaseScanResponse>();
-
-            foreach (var robotScan in robotScans.Scans)
-            {
-                var result = await ProcessSingleScan(robotScan, robotBaseUrl, currentUserId!);
-                if (result is not null)
-                    results.Add(result);
-            }
-
             return Ok(new { Total = results.Count, Results = results });
         }
 
-        // ✅ إحصائيات الـ Robot
         [HttpGet("Stats")]
         public async Task<IActionResult> Stats()
         {
@@ -134,7 +160,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             return Ok(stats);
         }
 
-        // ✅ Status الـ Robot
         [HttpGet("Status")]
         public async Task<IActionResult> Status()
         {
@@ -144,7 +169,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             return Ok(status);
         }
 
-        // ✅ Start الـ Robot (Admin فقط)
         [HttpPost("Start")]
         [Authorize(Roles = $"{SD.SuperAdmin},{SD.Admin}")]
         public async Task<IActionResult> Start()
@@ -153,7 +177,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             return Ok(new { message = "Robot started successfully." });
         }
 
-        // ✅ Stop الـ Robot (Admin فقط)
         [HttpPost("Stop")]
         [Authorize(Roles = $"{SD.SuperAdmin},{SD.Admin}")]
         public async Task<IActionResult> Stop()

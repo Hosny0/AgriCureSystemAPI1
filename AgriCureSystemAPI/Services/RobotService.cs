@@ -16,19 +16,10 @@ namespace AgriCureSystemAPI.Services
             _configuration = configuration;
         }
 
-        public async Task<RobotScanListResponse?> GetAllScansAsync()
-        {
-            var client = _httpClientFactory.CreateClient();
-            var response = await client.GetAsync($"{BaseUrl}/api/scans");
-            if (!response.IsSuccessStatusCode) return null;
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<RobotScanListResponse>(json, JsonOptions);
-        }
-
         public async Task<RobotLatestResponse?> GetLatestScansAsync()
         {
             var client = _httpClientFactory.CreateClient();
-            var response = await client.GetAsync($"{BaseUrl}/api/scans/latest");
+            var response = await client.GetAsync($"{BaseUrl}/latest");
             if (!response.IsSuccessStatusCode) return null;
             var json = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<RobotLatestResponse>(json, JsonOptions);

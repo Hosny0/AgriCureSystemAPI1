@@ -42,7 +42,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                 .Select(c => new { Id = c.Id, Name = c.Name })
                 .ToList();
 
-            // Filters
             if (productFilterRequest.ProductName is not null)
                 products = products.Where(e => e.Name.Contains(productFilterRequest.ProductName));
 
@@ -60,7 +59,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             if (productFilterRequest.IsHot)
                 products = products.Where(e => e.Discount > discount);
 
-            // Pagination
             if (page < 1) page = 1;
 
             var totalCount = products.Count();
@@ -81,7 +79,9 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                     ProductId = p.ProductId,
                     Name = p.Name,
                     Description = p.Description,
-                    Quantity = p.Quantity, // ✅ زودها
+                    Quantity = p.Quantity,
+                    Status = p.Status, 
+
                     MainImg = p.MainImg,
                     Price = p.Price,
                     PriceAfterDiscount = p.PriceAfterDiscount,
@@ -170,7 +170,8 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                     ProductId = p.ProductId,
                     Name = p.Name,
                     Description = p.Description,
-                    Quantity = p.Quantity,  // ✅ زود السطر ده
+                    Quantity = p.Quantity,
+                    Status = p.Status,  
 
                     MainImg = p.MainImg,
                     Price = p.Price,

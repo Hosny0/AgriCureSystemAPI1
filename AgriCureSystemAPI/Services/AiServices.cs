@@ -1,35 +1,42 @@
 ﻿using AgriCureSystemAPI.DTOs.Response;
-using AgriCureSystemAPI.Services;
 using System.Text.Json;
 
-public class AiService : IAiService
+namespace AgriCureSystemAPI.Services
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfiguration _configuration;
-
-    public AiService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public class AiService : IAiService
     {
-        _httpClientFactory = httpClientFactory;
-        _configuration = configuration;
-    }
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
 
-    public async Task<AiPredictionResponse?> PredictDiseaseAsync(IFormFile image, string plantName)
-    {
-        var client = _httpClientFactory.CreateClient();
-        using var formData = new MultipartFormDataContent();
-        using var imageStream = image.OpenReadStream();
+        public AiService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        {
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
+        }
 
-        formData.Add(new StringContent(plantName), "plant_name");
-        formData.Add(new StreamContent(imageStream), "file", image.FileName);
+        public async Task<AiPredictionResponse?> PredictDiseaseAsync(IFormFile image, string plantName)
+        {
+            var client = _httpClientFactory.CreateClient();
+            using var formData = new MultipartFormDataContent();
+            using var imageStream = image.OpenReadStream();
 
-        var aiUrl = _configuration["AiApi:BaseUrl"];
-        var response = await client.PostAsync($"{aiUrl}/predict", formData);
+            formData.Add(new StringContent(plantName), "plant_name");
+            formData.Add(new StreamContent(imageStream), "file", image.FileName);
 
-        if (!response.IsSuccessStatusCode)
-            return null;
+            Console.WriteLine($"plant_name: {plantName}");
+            Console.WriteLine($"File: {image.FileName} - Size: {image.Length}");
 
-        // ✅ parse الـ JSON بدل ما نرجعه string
-        var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<AiPredictionResponse>(json);
+            var aiUrl = _configuration["AiApi:BaseUrl"];
+            var response = await client.PostAsync($"{aiUrl}/predict", formData);
+
+            var responseBody = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"AI Status: {response.StatusCode}");
+            Console.WriteLine($"AI Response: {responseBody}");
+
+            if (!response.IsSuccessStatusCode) return null;
+
+            return JsonSerializer.Deserialize<AiPredictionResponse>(responseBody,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
     }
 }

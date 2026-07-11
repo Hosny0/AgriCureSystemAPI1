@@ -30,14 +30,7 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
             if (user is null)
                 return NotFound();
 
-            //var userVM = new ApplicationUserVM()
-            //{
-            //    FullName = user.FirstName + " " + user.LastName,
-            //    // FullName = $"{user.FirstName} {user.LastName}",
-            //    Address = user.Address,
-            //    Email = user.Email,
-            //    PhoneNumber = user.PhoneNumber
-            //};
+         
 
             var userVM = user.Adapt<ApplicationUserResponse>();
 
@@ -52,7 +45,6 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
             var user = await _userManager.FindByIdAsync(userId);
             if (user is null) return NotFound();
 
-            // ✅ لوج كل خطوة عشان نشوف فين المشكلة
             Console.WriteLine($"=== BEFORE UPDATE ===");
             Console.WriteLine($"UserName in DB: {user.UserName}");
             Console.WriteLine($"UserName requested: {applicationUserRequest.UserName}");
@@ -98,7 +90,7 @@ namespace AgriCureSystemAPI.Areas.Identity.Controllers
     }
     
 }
-        //  }
+        
 
     
 

@@ -15,7 +15,7 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
     public class ReviewController : ControllerBase
     {
         private readonly IReviewRepository _reviewRepo;
-        private readonly IProductRepository _productRepo; // ✅ زودنا عشان نجيب الـ rate الجديد
+        private readonly IProductRepository _productRepo; 
 
         public ReviewController(IReviewRepository reviewRepo, IProductRepository productRepo)
         {
@@ -50,10 +50,8 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                 await _reviewRepo.CreateAsync(newReview);
             }
 
-            // ✅ Fix: حفظ في الـ DB
             await _reviewRepo.CommitAsync();
 
-            // ✅ جيب الـ product بعد الحفظ عشان تحسب الـ rate الجديد
             var product = await _productRepo.GetOneAsync(
                 e => e.ProductId == productId,
                 includes: [e => e.Reviews]

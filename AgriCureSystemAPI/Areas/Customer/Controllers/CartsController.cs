@@ -85,7 +85,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             return Ok(new
             {
                 Carts = carts,
-                // تم استخدام PriceAfterDiscount لضمان دقة الإجمالي
                 TotalPrice = carts.Sum(e => e.Product.PriceAfterDiscount * e.Count)
             });
         }
@@ -203,14 +202,12 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
 
             if (!carts.Any()) return BadRequest("Cart is empty");
 
-            // 1. إنشاء الأوردر وحساب الإجمالي النهائي بالخصومات
             await _orderRepository.CreateAsync(new()
             {
                 ApplicationUserId = user.Id,
                 DateTime = DateTime.UtcNow,
                 OrderStatus = OrderStatus.pending,
                 PaymentMethod = PaymentMethod.Visa,
-                // تحويل الـ decimal لـ double حسب موديل الأوردر عندك
                 TotalPrice = (double)carts.Sum(e => e.Product.PriceAfterDiscount * e.Count),
             });
             await _orderRepository.CommitAsync();
@@ -230,7 +227,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                 CancelUrl = $"{Request.Scheme}://{Request.Host}/Customer/Checkout/Cancel?orderId={order.Id}",
             };
 
-            // 2. إضافة المنتجات لجلسة Stripe بالأسعار بعد الخصم
             foreach (var item in carts)
             {
                 options.LineItems.Add(new SessionLineItemOptions
@@ -243,7 +239,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
                             Name = item.Product.Name,
                             Description = item.Product.Description
                         },
-                        // تحويل السعر لـ Cents (ضرب في 100) وإرسال السعر المخفض
                         UnitAmount = (long)(item.Product.PriceAfterDiscount * 100),
                     },
                     Quantity = item.Count,

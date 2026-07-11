@@ -4,7 +4,6 @@ namespace AgriCureSystemAPI.Services
 {
     public interface IRobotService
     {
-        Task<RobotScanListResponse?> GetAllScansAsync();
         Task<RobotLatestResponse?> GetLatestScansAsync();
         Task<RobotStatsResponse?> GetStatsAsync();
         Task<object?> GetRobotStatusAsync();

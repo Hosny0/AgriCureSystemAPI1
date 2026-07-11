@@ -35,13 +35,11 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             if (order is null)
                 return NotFound();
 
-            // update order status
             order.OrderStatus = OrderStatus.processing;
             var service = new SessionService();
             var session = service.Get(order.SessionId);
             order.TransactionId = session.PaymentIntentId;
 
-            // cart => order item
             var user = await _userManager.GetUserAsync(User);
 
             if (user is null)
@@ -72,10 +70,8 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
 
             foreach (var item in carts)
             {
-                // decrease quantity
                 item.Product.Quantity -= item.Count;
 
-                // delete old cart
                 _cartRepository.Delete(item);
             }
 
@@ -95,7 +91,6 @@ namespace AgriCureSystemAPI.Areas.Customer.Controllers
             if (order is null)
                 return NotFound();
 
-            // update order status
             order.OrderStatus = OrderStatus.canceled;
 
             await _orderRepository.CommitAsync();

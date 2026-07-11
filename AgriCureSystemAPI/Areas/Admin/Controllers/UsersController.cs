@@ -90,15 +90,14 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
 
             if (user.LockoutEnd != null && user.LockoutEnd > DateTime.UtcNow)
             {
-                // متبلوك → افتح
                 user.LockoutEnd = null;
-                user.LockoutEnabled = true; // ✅ خليها true دايماً
+                user.LockoutEnabled = true; 
                 message = $"{user.FirstName} has been unlocked successfully";
             }
             else
             {
                 user.LockoutEnabled = true; 
-                user.LockoutEnd = DateTimeOffset.UtcNow.AddDays(30); // 
+                user.LockoutEnd = DateTimeOffset.UtcNow.AddDays(30); 
                 message = $"{user.FirstName} has been locked successfully";
             }
 

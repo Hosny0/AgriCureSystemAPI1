@@ -19,26 +19,27 @@ namespace AgriCureSystemAPI.Services
             var client = _httpClientFactory.CreateClient();
             using var formData = new MultipartFormDataContent();
 
-            // ✅ زود الـ ContentType صريح
             var imageContent = new ByteArrayContent(imageBytes);
             imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
             formData.Add(imageContent, "file", fileName);
 
             var baseUrl = _configuration["PlantClassifierApi:BaseUrl"];
-
-            Console.WriteLine($"URL: {baseUrl}/predict");
-            Console.WriteLine($"FileName: {fileName}");
-            Console.WriteLine($"Size: {imageBytes.Length} bytes");
-
             var response = await client.PostAsync($"{baseUrl}/predict", formData);
 
-            var responseBody = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"StatusCode: {response.StatusCode}");
-            Console.WriteLine($"ResponseBody: {responseBody}");
+            // ✅ لو 400 يعني مش نبات
+            if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                return new PlantClassifierResponse
+                {
+                    IsValidPlant = false,
+                    Status = "not_a_plant"
+                };
+            }
 
             if (!response.IsSuccessStatusCode) return null;
 
-            return JsonSerializer.Deserialize<PlantClassifierResponse>(responseBody,
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<PlantClassifierResponse>(json,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
     }

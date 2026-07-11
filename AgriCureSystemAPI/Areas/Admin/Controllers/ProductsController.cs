@@ -73,12 +73,10 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
             if (productRequest.MainImg is null || productRequest.MainImg.Length == 0)
                 return BadRequest("Main image is required.");
 
-            // ✅ تحقق إن الـ Category موجودة
             var category = await _categoryRepository.GetOneAsync(e => e.Id == productRequest.CategoryId);
             if (category is null)
                 return BadRequest($"Category with id {productRequest.CategoryId} not found.");
 
-            // ✅ تحقق إن الـ Brand موجودة
             var brand = await _brandRepository.GetOneAsync(e => e.Id == productRequest.BrandId);
             if (brand is null)
                 return BadRequest($"Brand with id {productRequest.BrandId} not found.");
@@ -162,12 +160,10 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
             if (productInDB is null)
                 return NotFound();
 
-            // ✅ تحقق إن الـ Category موجودة
             var category = await _categoryRepository.GetOneAsync(e => e.Id == updateProductRequest.CategoryId);
             if (category is null)
                 return BadRequest($"Category with id {updateProductRequest.CategoryId} not found.");
 
-            // ✅ تحقق إن الـ Brand موجودة
             var brand = await _brandRepository.GetOneAsync(e => e.Id == updateProductRequest.BrandId);
             if (brand is null)
                 return BadRequest($"Brand with id {updateProductRequest.BrandId} not found.");
@@ -198,7 +194,6 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
 
             _productRepository.Edit(product);
 
-            // ✅ تحقق إن الـ Save نجح
             var saved = await _productRepository.CommitAsync();
             if (!saved)
                 return StatusCode(500, "Failed to update product. Please try again.");
@@ -220,7 +215,6 @@ namespace AgriCureSystemAPI.Areas.Admin.Controllers
 
             _productRepository.Delete(product);
 
-            // ✅ تحقق إن الـ Save نجح
             var saved = await _productRepository.CommitAsync();
             if (!saved)
                 return StatusCode(500, "Failed to delete product. Please try again.");
